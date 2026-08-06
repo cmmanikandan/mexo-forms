@@ -14,8 +14,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [profile, setProfile] = useState<MexoProfile | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [profile, setProfile] = useState<MexoProfile | null>(() => {
+    try {
+      const stored = localStorage.getItem('mexo_auth_profile');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      return !!localStorage.getItem('mexo_auth_profile');
+    } catch {
+      return false;
+    }
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -29,6 +42,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (p && mounted) {
             setProfile(p);
             setIsAuthenticated(true);
+            try {
+              localStorage.setItem('mexo_auth_profile', JSON.stringify(p));
+            } catch (e) {
+              /* ignore storage errors */
+            }
+          }
+        } else if (mounted) {
+          // Check local storage backup if no active Supabase session
+          const stored = localStorage.getItem('mexo_auth_profile');
+          if (stored) {
+            try {
+              const p = JSON.parse(stored);
+              setProfile(p);
+              setIsAuthenticated(true);
+            } catch {
+              localStorage.removeItem('mexo_auth_profile');
+            }
           }
         }
       } catch (e) {
@@ -45,11 +75,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (event === 'SIGNED_OUT') {
         setProfile(null);
         setIsAuthenticated(false);
+        try {
+          localStorage.removeItem('mexo_auth_profile');
+        } catch (e) {
+          /* ignore */
+        }
       } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
         const p = await profileService.getProfileById(session.user.id);
         if (p && mounted) {
           setProfile(p);
           setIsAuthenticated(true);
+          try {
+            localStorage.setItem('mexo_auth_profile', JSON.stringify(p));
+          } catch (e) {
+            /* ignore */
+          }
         }
       }
       if (mounted) setIsLoading(false);
@@ -67,6 +107,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (user) {
       setProfile(user);
       setIsAuthenticated(true);
+      try {
+        localStorage.setItem('mexo_auth_profile', JSON.stringify(user));
+      } catch (e) {
+        /* ignore */
+      }
       setIsLoading(false);
       return { success: true };
     }
@@ -78,6 +123,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await authService.signOut();
     setProfile(null);
     setIsAuthenticated(false);
+    try {
+      localStorage.removeItem('mexo_auth_profile');
+    } catch (e) {
+      /* ignore */
+    }
   };
 
   return (

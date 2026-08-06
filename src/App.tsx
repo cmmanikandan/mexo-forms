@@ -25,12 +25,12 @@ const RootIndex: React.FC = () => {
   const [splashFinished, setSplashFinished] = React.useState(false);
 
   React.useEffect(() => {
-    const t1 = setTimeout(() => setSplashProgress(60), 300);
-    const t2 = setTimeout(() => setSplashProgress(85), 650);
+    const t1 = setTimeout(() => setSplashProgress(60), 200);
+    const t2 = setTimeout(() => setSplashProgress(85), 450);
     const t3 = setTimeout(() => {
       setSplashProgress(100);
-      setTimeout(() => setSplashFinished(true), 400);
-    }, 950);
+      setTimeout(() => setSplashFinished(true), 300);
+    }, 700);
 
     return () => {
       clearTimeout(t1);
@@ -42,6 +42,10 @@ const RootIndex: React.FC = () => {
   if (isLoading || !splashFinished) {
     return <SplashScreen progress={splashProgress} isFadingOut={splashProgress === 100} />;
   }
+
+  // Fresh load/root route redirect logic:
+  // Logged-in user -> /home (account)
+  // New user -> /welcome (landing)
   return <Navigate to={isAuthenticated ? '/home' : '/welcome'} replace />;
 };
 
@@ -54,6 +58,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (!isAuthenticated) {
     return <Navigate to="/signin" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Route wrapper for Sign In page: if already authenticated, go straight to account (/home)
+const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <SplashScreen progress={90} />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/home" replace />;
   }
 
   return <>{children}</>;
@@ -95,8 +114,8 @@ export const App: React.FC = () => {
           {/* Public Form Respondent View */}
           <Route path="/f/:slug" element={<PublicFormPage />} />
 
-          {/* Auth */}
-          <Route path="/signin" element={<SignInPage />} />
+          {/* Auth: Redirect to /home if already logged in */}
+          <Route path="/signin" element={<AuthRoute><SignInPage /></AuthRoute>} />
 
           {/* Protected App Routes */}
           <Route path="/" element={<RootIndex />} />
