@@ -24,6 +24,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+
   // Network-first for API/Supabase calls
   if (request.url.includes('supabase.co') || request.url.includes('/rest/') || request.url.includes('/auth/')) {
     event.respondWith(
@@ -31,6 +32,15 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
+
+  // Navigation requests for SPA routes: try network first, fallback to cached /index.html
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
   // Cache-first for static assets
   event.respondWith(
     caches.match(request).then((cached) => cached || fetch(request))
