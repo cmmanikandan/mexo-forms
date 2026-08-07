@@ -48,6 +48,8 @@ export interface Form {
   slug: string;
   status: FormStatus;
   form_type: FormType;
+  form_mode?: 'standard' | 'registration' | 'quiz';
+  template_type?: string;
   is_published: boolean;
   accepting_responses: boolean;
   requires_login: boolean;

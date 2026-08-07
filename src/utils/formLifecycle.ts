@@ -98,6 +98,8 @@ export function getFormAvailability(
     };
   }
 
+  const isRegistration = (form as any).form_mode === 'registration' || Boolean(form.event_name || form.registration_prefix);
+
   // 4. Check if manually closed by owner or status === 'closed'
   if (form.manual_closed_at || form.status === 'closed' || !form.accepting_responses) {
     return {
@@ -106,8 +108,8 @@ export function getFormAvailability(
       canSubmit: false,
       badgeLabel: 'CLOSED',
       badgeColorClass: 'bg-rose-100 text-rose-800 border-rose-200',
-      closedTitle: form.closed_title || 'Form Closed',
-      closedMessage: form.closed_message || 'This form is no longer accepting responses.',
+      closedTitle: form.closed_title || (isRegistration ? 'Registration Closed' : 'Form Closed'),
+      closedMessage: form.closed_message || (isRegistration ? 'Registration for this event has ended.' : 'This form is no longer accepting responses.'),
       currentResponseCount: respCount,
     };
   }
@@ -120,8 +122,8 @@ export function getFormAvailability(
       canSubmit: false,
       badgeLabel: 'SCHEDULED',
       badgeColorClass: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-      closedTitle: form.closed_title || 'Registration Opens Soon',
-      closedMessage: form.closed_message || `This form will start accepting responses on ${formattedStart || form.starts_at}.`,
+      closedTitle: form.closed_title || (isRegistration ? 'Registration Opens Soon' : 'Form Opens Soon'),
+      closedMessage: form.closed_message || (isRegistration ? `Registration opens on ${formattedStart || form.starts_at}.` : `This form will start accepting responses on ${formattedStart || form.starts_at}.`),
       formattedStartDate: formattedStart,
       formattedEndDate: formattedEnd,
       currentResponseCount: respCount,
@@ -136,8 +138,8 @@ export function getFormAvailability(
       canSubmit: false,
       badgeLabel: 'CLOSED',
       badgeColorClass: 'bg-rose-100 text-rose-800 border-rose-200',
-      closedTitle: form.closed_title || 'Registration Closed',
-      closedMessage: form.closed_message || `The registration period ended on ${formattedEnd || form.ends_at}.`,
+      closedTitle: form.closed_title || (isRegistration ? 'Registration Closed' : 'Form Closed'),
+      closedMessage: form.closed_message || (isRegistration ? `Registration ended on ${formattedEnd || form.ends_at}.` : `The response deadline passed on ${formattedEnd || form.ends_at}.`),
       formattedStartDate: formattedStart,
       formattedEndDate: formattedEnd,
       currentResponseCount: respCount,
@@ -152,8 +154,8 @@ export function getFormAvailability(
       canSubmit: false,
       badgeLabel: 'FULL',
       badgeColorClass: 'bg-purple-100 text-purple-800 border-purple-200',
-      closedTitle: form.closed_title || 'Registration Full',
-      closedMessage: form.closed_message || `This form has reached the maximum capacity of ${totalCap} responses. All available spots have been filled.`,
+      closedTitle: form.closed_title || (isRegistration ? 'Registration Full' : 'Form Capacity Reached'),
+      closedMessage: form.closed_message || (isRegistration ? `All ${totalCap} available spots for this event have been filled.` : `This form has reached the maximum capacity of ${totalCap} responses.`),
       remainingCapacity: 0,
       totalCapacity: totalCap,
       currentResponseCount: respCount,

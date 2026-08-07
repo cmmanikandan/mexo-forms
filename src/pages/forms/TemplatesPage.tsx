@@ -14,157 +14,207 @@ interface TemplateItem {
   id: string;
   name: string;
   category: string;
+  mode: 'standard' | 'registration' | 'quiz';
   description: string;
   icon: React.ReactNode;
   color: string;
-  questions: { text: string; type: string; options?: string[] }[];
+  prefix?: string;
+  questions: { text: string; type: string; required?: boolean; options?: string[] }[];
 }
 
 const TEMPLATES: TemplateItem[] = [
+  // STANDARD FORMS
   {
-    id: 'feedback',
+    id: 'customer_feedback',
     name: 'Customer Feedback',
-    category: 'Feedback',
-    description: 'Gather user satisfaction ratings, feedback, and NPS.',
+    category: 'Standard Forms',
+    mode: 'standard',
+    description: 'Gather user satisfaction ratings, feedback, and NPS score.',
     icon: <MessageSquare className="w-5 h-5" />,
     color: 'from-blue-500 to-indigo-600',
     questions: [
-      { text: 'How satisfied are you with our service?', type: 'rating' },
-      { text: 'How likely are you to recommend us to a friend?', type: 'linear_scale' },
-      { text: 'What can we improve?', type: 'long_text' },
+      { text: 'How satisfied are you with our service?', type: 'rating', required: true },
+      { text: 'How likely are you to recommend us to a friend?', type: 'linear_scale', required: true },
+      { text: 'What can we improve?', type: 'long_text', required: false },
     ],
   },
   {
-    id: 'registration',
+    id: 'contact_form',
+    name: 'Contact & Enquiry Form',
+    category: 'Standard Forms',
+    mode: 'standard',
+    description: 'Collect visitor messages, subject line, and contact details.',
+    icon: <User className="w-5 h-5" />,
+    color: 'from-sky-500 to-blue-600',
+    questions: [
+      { text: 'Full Name', type: 'short_text', required: true },
+      { text: 'Email Address', type: 'email', required: true },
+      { text: 'Subject', type: 'short_text', required: true },
+      { text: 'Your Message', type: 'long_text', required: true },
+    ],
+  },
+  {
+    id: 'general_survey',
+    name: 'General Survey',
+    category: 'Standard Forms',
+    mode: 'standard',
+    description: 'Collect opinion votes, demographic choices, and survey inputs.',
+    icon: <HelpCircle className="w-5 h-5" />,
+    color: 'from-indigo-500 to-purple-600',
+    questions: [
+      { text: 'Respondent Name / Department', type: 'short_text' },
+      { text: 'Primary Topic of Interest', type: 'multiple_choice', options: ['Technology', 'Business', 'Design', 'Science'] },
+      { text: 'Additional Comments', type: 'long_text' },
+    ],
+  },
+
+  // REGISTRATION & EVENT FORMS
+  {
+    id: 'event_registration',
     name: 'Event Registration',
-    category: 'Registration',
-    description: 'Collect participant details, contact info, and dietary preferences.',
+    category: 'Registration & Events',
+    mode: 'registration',
+    prefix: 'MXEV',
+    description: 'Collect participant details, contact info, and registration preferences.',
     icon: <Users className="w-5 h-5" />,
     color: 'from-emerald-500 to-teal-600',
     questions: [
-      { text: 'Full Name', type: 'short_text' },
-      { text: 'Email Address', type: 'email' },
-      { text: 'Phone Number', type: 'phone' },
-      { text: 'Dietary Restrictions', type: 'multiple_choice', options: ['None', 'Vegetarian', 'Vegan', 'Gluten-Free'] },
+      { text: 'Full Name', type: 'short_text', required: true },
+      { text: 'Email Address', type: 'email', required: true },
+      { text: 'Mobile Number', type: 'phone', required: true },
+      { text: 'Department / Organization', type: 'short_text' },
+      { text: 'Participant Type', type: 'dropdown', options: ['Student', 'Faculty', 'Professional', 'Guest'] },
+      { text: 'Special Requirements / Notes', type: 'long_text' },
     ],
   },
   {
-    id: 'quiz',
+    id: 'workshop_registration',
+    name: 'Workshop Registration',
+    category: 'Registration & Events',
+    mode: 'registration',
+    prefix: 'MXWS',
+    description: 'Hands-on workshop signup with skill levels and session selection.',
+    icon: <Wrench className="w-5 h-5" />,
+    color: 'from-purple-500 to-indigo-600',
+    questions: [
+      { text: 'Full Name', type: 'short_text', required: true },
+      { text: 'Email Address', type: 'email', required: true },
+      { text: 'Mobile Number', type: 'phone', required: true },
+      { text: 'College / Company', type: 'short_text', required: true },
+      { text: 'Experience Level', type: 'multiple_choice', options: ['Beginner', 'Intermediate', 'Advanced'] },
+      { text: 'Workshop Session', type: 'dropdown', options: ['Morning Session (10 AM)', 'Afternoon Session (2 PM)'] },
+    ],
+  },
+  {
+    id: 'seminar_registration',
+    name: 'Seminar Registration',
+    category: 'Registration & Events',
+    mode: 'registration',
+    prefix: 'MXSM',
+    description: 'Academic or professional seminar registration with attendance mode.',
+    icon: <GraduationCap className="w-5 h-5" />,
+    color: 'from-blue-600 to-cyan-600',
+    questions: [
+      { text: 'Full Name', type: 'short_text', required: true },
+      { text: 'Email Address', type: 'email', required: true },
+      { text: 'Mobile Number', type: 'phone', required: true },
+      { text: 'Institution / Department', type: 'short_text', required: true },
+      { text: 'Attendance Mode', type: 'multiple_choice', options: ['In-Person', 'Online Stream'] },
+    ],
+  },
+  {
+    id: 'conference_registration',
+    name: 'Conference Registration',
+    category: 'Registration & Events',
+    mode: 'registration',
+    prefix: 'MXCF',
+    description: 'Multi-track conference registration with participant categories.',
+    icon: <Briefcase className="w-5 h-5" />,
+    color: 'from-teal-600 to-emerald-700',
+    questions: [
+      { text: 'Participant Name', type: 'short_text', required: true },
+      { text: 'Email Address', type: 'email', required: true },
+      { text: 'Mobile Number', type: 'phone', required: true },
+      { text: 'Organization / Institution', type: 'short_text', required: true },
+      { text: 'Category', type: 'dropdown', options: ['Student', 'Faculty', 'Researcher', 'Professional', 'Speaker'] },
+      { text: 'Dietary Preferences', type: 'multiple_choice', options: ['Regular', 'Vegetarian', 'Vegan'] },
+    ],
+  },
+  {
+    id: 'hackathon_registration',
+    name: 'Hackathon Team Registration',
+    category: 'Registration & Events',
+    mode: 'registration',
+    prefix: 'MXHK',
+    description: 'Team hackathon registration with problem domain & tech stack.',
+    icon: <Code className="w-5 h-5" />,
+    color: 'from-amber-600 to-orange-600',
+    questions: [
+      { text: 'Team Name', type: 'short_text', required: true },
+      { text: 'Team Leader Name', type: 'short_text', required: true },
+      { text: 'Team Leader Email', type: 'email', required: true },
+      { text: 'Team Leader Mobile', type: 'phone', required: true },
+      { text: 'College / Organization', type: 'short_text', required: true },
+      { text: 'Team Size (2 - 4)', type: 'number', required: true },
+      { text: 'Problem Track / Domain', type: 'dropdown', options: ['AI & ML', 'Web & App Development', 'Blockchain & Fintech', 'Open Innovation'] },
+    ],
+  },
+  {
+    id: 'webinar_registration',
+    name: 'Webinar / Online Event',
+    category: 'Registration & Events',
+    mode: 'registration',
+    prefix: 'MXWB',
+    description: 'Online webinar registration with joining link delivery.',
+    icon: <Zap className="w-5 h-5" />,
+    color: 'from-rose-500 to-pink-600',
+    questions: [
+      { text: 'Full Name', type: 'short_text', required: true },
+      { text: 'Email Address', type: 'email', required: true },
+      { text: 'Mobile Number', type: 'phone' },
+      { text: 'Organization / Institution', type: 'short_text' },
+    ],
+  },
+
+  // QUIZ & ASSESSMENTS
+  {
+    id: 'general_quiz',
     name: 'General Knowledge Quiz',
-    category: 'Quiz',
+    category: 'Quiz & Assessments',
+    mode: 'quiz',
     description: 'Test knowledge with standard multiple choice question blocks.',
     icon: <Zap className="w-5 h-5" />,
     color: 'from-amber-500 to-orange-600',
     questions: [
-      { text: 'Participant Name', type: 'short_text' },
-      { text: 'Question 1: What is the capital of France?', type: 'multiple_choice', options: ['London', 'Berlin', 'Paris', 'Madrid'] },
-      { text: 'Question 2: Which planet is known as the Red Planet?', type: 'multiple_choice', options: ['Venus', 'Mars', 'Jupiter', 'Saturn'] },
+      { text: 'Participant Name', type: 'short_text', required: true },
+      { text: 'Question 1: What is the capital of France?', type: 'multiple_choice', required: true, options: ['London', 'Berlin', 'Paris', 'Madrid'] },
+      { text: 'Question 2: Which planet is known as the Red Planet?', type: 'multiple_choice', required: true, options: ['Venus', 'Mars', 'Jupiter', 'Saturn'] },
     ],
   },
   {
     id: 'web_quiz',
-    name: 'Web Development Quiz',
-    category: 'Quiz',
-    description: 'Assessment quiz covering HTML, CSS, JavaScript, and React.',
+    name: 'Web Development Assessment',
+    category: 'Quiz & Assessments',
+    mode: 'quiz',
+    description: 'Technical assessment quiz covering HTML, CSS, JavaScript, and React.',
     icon: <Code className="w-5 h-5" />,
     color: 'from-purple-600 to-indigo-600',
     questions: [
-      { text: 'Student Name / Email', type: 'short_text' },
-      { text: '1. Which HTML tag is used for the main heading?', type: 'multiple_choice', options: ['<h1>', '<head>', '<header>', '<heading>'] },
-      { text: '2. What does CSS stand for?', type: 'multiple_choice', options: ['Cascading Style Sheets', 'Computer Style System', 'Creative Sheet Style', 'Colorful Style Sheets'] },
-      { text: '3. Which JS keyword declares a block-scoped variable?', type: 'multiple_choice', options: ['var', 'let', 'global', 'const'] },
-    ],
-  },
-  {
-    id: 'job_app',
-    name: 'Job Application & HR Intake',
-    category: 'HR',
-    description: 'Collect applicant details, resume attachments, and experience.',
-    icon: <Briefcase className="w-5 h-5" />,
-    color: 'from-sky-500 to-[#0878e8]',
-    questions: [
-      { text: 'Full Name', type: 'short_text' },
-      { text: 'Email Address', type: 'email' },
-      { text: 'Position Applied For', type: 'dropdown', options: ['Frontend Developer', 'Backend Developer', 'UI/UX Designer', 'Product Manager'] },
-      { text: 'Years of Experience', type: 'number' },
-      { text: 'Portfolio / LinkedIn URL', type: 'short_text' },
-    ],
-  },
-  {
-    id: 'course_eval',
-    name: 'Course & Teacher Evaluation',
-    category: 'Education',
-    description: 'Gather student feedback on course materials, teaching, and clarity.',
-    icon: <GraduationCap className="w-5 h-5" />,
-    color: 'from-teal-500 to-emerald-600',
-    questions: [
-      { text: 'Course Name', type: 'short_text' },
-      { text: 'Instructor Clarity & Preparation', type: 'rating' },
-      { text: 'Was the pace of the course appropriate?', type: 'yes_no' },
-      { text: 'What did you like most about this course?', type: 'long_text' },
-    ],
-  },
-  {
-    id: 'it_ticket',
-    name: 'IT Support Ticket & Issue Report',
-    category: 'IT Support',
-    description: 'Log technical issues, priority level, and system details.',
-    icon: <Wrench className="w-5 h-5" />,
-    color: 'from-slate-600 to-slate-800',
-    questions: [
-      { text: 'User Name / Department', type: 'short_text' },
-      { text: 'Issue Category', type: 'dropdown', options: ['Hardware', 'Software', 'Network / Wi-Fi', 'Account Access'] },
-      { text: 'Priority Level', type: 'multiple_choice', options: ['Low', 'Medium', 'High', 'Critical'] },
-      { text: 'Detailed Issue Description', type: 'long_text' },
-    ],
-  },
-  {
-    id: 'survey',
-    name: 'Product Research Survey',
-    category: 'Survey',
-    description: 'Understand customer demographics and product usage habits.',
-    icon: <ClipboardCheck className="w-5 h-5" />,
-    color: 'from-purple-500 to-violet-600',
-    questions: [
-      { text: 'How often do you use our product?', type: 'dropdown', options: ['Daily', 'Weekly', 'Monthly', 'Rarely'] },
-      { text: 'Which features do you use most?', type: 'checkbox', options: ['Forms', 'Mail', 'Analytics', 'Settings'] },
-      { text: 'Additional Comments', type: 'long_text' },
-    ],
-  },
-  {
-    id: 'contact',
-    name: 'Simple Contact Form',
-    category: 'Contact',
-    description: 'Basic contact card for websites or personal profiles.',
-    icon: <User className="w-5 h-5" />,
-    color: 'from-indigo-500 to-sky-600',
-    questions: [
-      { text: 'Your Name', type: 'short_text' },
-      { text: 'Email Address', type: 'email' },
-      { text: 'Subject', type: 'short_text' },
-      { text: 'Message', type: 'long_text' },
-    ],
-  },
-  {
-    id: 'poll',
-    name: 'Quick Vote / Poll',
-    category: 'Poll',
-    description: 'A quick single-question poll to check audience sentiment.',
-    icon: <HelpCircle className="w-5 h-5" />,
-    color: 'from-rose-500 to-pink-600',
-    questions: [
-      { text: 'What feature should we build next?', type: 'multiple_choice', options: ['Dark Mode', 'Mobile App', 'Export to PDF', 'Custom Domains'] },
+      { text: 'Student Name / Email', type: 'short_text', required: true },
+      { text: '1. Which HTML tag is used for the main heading?', type: 'multiple_choice', required: true, options: ['<h1>', '<head>', '<header>', '<heading>'] },
+      { text: '2. What does CSS stand for?', type: 'multiple_choice', required: true, options: ['Cascading Style Sheets', 'Computer Style System', 'Creative Sheet Style', 'Colorful Style Sheets'] },
+      { text: '3. Which JS keyword declares a block-scoped variable?', type: 'multiple_choice', required: true, options: ['var', 'let', 'global', 'const'] },
     ],
   },
 ];
 
 export const TemplatesPage: React.FC = () => {
-  const { profile } = useAuth();
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [creating, setCreating] = useState<string | null>(null);
   const [selectedCat, setSelectedCat] = useState<string>('All');
 
-  const categories = ['All', 'Feedback', 'Registration', 'Quiz', 'HR', 'Education', 'IT Support', 'Survey', 'Contact', 'Poll'];
+  const categories = ['All', 'Standard Forms', 'Registration & Events', 'Quiz & Assessments'];
 
   const handleUseTemplate = async (tmpl: TemplateItem) => {
     if (!profile) return;

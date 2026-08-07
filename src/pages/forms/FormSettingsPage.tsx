@@ -46,12 +46,17 @@ export const FormSettingsPage: React.FC = () => {
   const [uploadingHeader, setUploadingHeader] = useState(false);
   const [uploadingPost, setUploadingPost] = useState(false);
 
+  // Mode Change Warning Dialog
+  const [modeConfirmOpen, setModeConfirmOpen] = useState(false);
+  const [targetMode, setTargetMode] = useState<'standard' | 'registration' | 'quiz'>('standard');
+
   // Consolidated Form Data
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     confirmation_message: '',
     form_type: 'form' as 'form' | 'quiz',
+    form_mode: 'standard' as 'standard' | 'registration' | 'quiz',
 
     // Appearance
     theme_color: 'violet',
@@ -124,11 +129,13 @@ export const FormSettingsPage: React.FC = () => {
     formService.getForm(id).then(f => {
       if (f) {
         setForm(f);
+        const resolvedMode = (f as any).form_mode || (f.form_type === 'quiz' ? 'quiz' : (f.event_name || f.registration_prefix ? 'registration' : 'standard'));
         const data = {
           title: f.title || '',
           description: f.description || '',
           confirmation_message: f.confirmation_message || 'Thank you for your response!',
           form_type: f.form_type || 'form',
+          form_mode: resolvedMode as 'standard' | 'registration' | 'quiz',
 
           theme_color: f.theme_color || 'violet',
 
@@ -250,7 +257,8 @@ export const FormSettingsPage: React.FC = () => {
       title: formData.title,
       description: formData.description,
       confirmation_message: formData.confirmation_message,
-      form_type: formData.form_type,
+      form_type: formData.form_mode === 'quiz' ? 'quiz' : 'form',
+      form_mode: formData.form_mode,
       theme_color: formData.theme_color,
 
       accepting_responses: formData.accepting_responses,
@@ -403,32 +411,40 @@ export const FormSettingsPage: React.FC = () => {
           />
 
           <div>
-            <label className="block text-xs font-semibold text-app-heading mb-1.5">Form Purpose / Mode</label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setFormData(s => ({ ...s, form_type: 'form' }))}
-                className={`p-3.5 rounded-2xl border text-left transition-all ${
-                  formData.form_type === 'form'
-                    ? 'border-[#7C3AED] bg-purple-50/50 text-[#7C3AED] ring-2 ring-purple-100'
-                    : 'border-app-border hover:border-slate-300'
-                }`}
-              >
-                <div className="text-xs font-bold">Standard Form</div>
-                <div className="text-[11px] text-app-muted mt-0.5">Collect feedback, surveys, RSVP, or registrations</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData(s => ({ ...s, form_type: 'quiz' }))}
-                className={`p-3.5 rounded-2xl border text-left transition-all ${
-                  formData.form_type === 'quiz'
-                    ? 'border-[#7C3AED] bg-purple-50/50 text-[#7C3AED] ring-2 ring-purple-100'
-                    : 'border-app-border hover:border-slate-300'
-                }`}
-              >
-                <div className="text-xs font-bold">Quiz / Assessment</div>
-                <div className="text-[11px] text-app-muted mt-0.5">Auto-grade questions with scores & timer</div>
-              </button>
+            <label className="block text-xs font-bold text-app-heading mb-2">Form Purpose / Mode</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { id: 'standard', title: 'Standard Form', desc: 'Feedback, surveys, contact forms & general data collection' },
+                { id: 'registration', title: 'Registration / Event', desc: 'Events, workshops, seminars, conferences & registrations' },
+                { id: 'quiz', title: 'Quiz / Assessment', desc: 'Tests, quizzes, exams & auto-graded assessments' },
+              ].map(m => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => {
+                    if (formData.form_mode === m.id) return;
+                    if ((form?.response_count || 0) > 0) {
+                      setTargetMode(m.id as any);
+                      setModeConfirmOpen(true);
+                    } else {
+                      setFormData(s => ({
+                        ...s,
+                        form_mode: m.id as any,
+                        form_type: m.id === 'quiz' ? 'quiz' : 'form',
+                        enable_event_features: m.id === 'registration',
+                      }));
+                    }
+                  }}
+                  className={`p-3.5 rounded-2xl border text-left transition-all ${
+                    formData.form_mode === m.id
+                      ? 'border-[#7C3AED] bg-purple-50/60 text-[#7C3AED] ring-2 ring-purple-100 font-bold'
+                      : 'border-app-border hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className="text-xs font-extrabold">{m.title}</div>
+                  <div className="text-[10px] text-app-muted mt-1 leading-relaxed">{m.desc}</div>
+                </button>
+              ))}
             </div>
           </div>
 
@@ -690,126 +706,125 @@ export const FormSettingsPage: React.FC = () => {
           </div>
         )}
 
-        {/* 7. CAPACITY & REGISTRATION */}
-        <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4 shadow-mexo-card">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-lg bg-purple-50 text-[#7C3AED] flex items-center justify-center font-bold text-xs">7</span>
-              <h2 className="text-sm font-bold text-app-heading">Capacity & Registration Limit</h2>
-            </div>
-            <MexoToggle
-              checked={formData.enable_response_limit}
-              onCheckedChange={v => setFormData(s => ({ ...s, enable_response_limit: v }))}
-            />
-          </div>
-
-          {formData.enable_response_limit && (
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-app-heading mb-1">Maximum Responses Allowed</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={formData.response_limit}
-                  onChange={e => setFormData(s => ({ ...s, response_limit: Number(e.target.value) }))}
-                  className="w-full rounded-xl border border-app-border px-3 py-2.5 text-xs text-app-heading outline-none focus:border-[#7C3AED] bg-white font-bold text-slate-900"
+        {/* REGISTRATION SPECIFIC SECTIONS */}
+        {formData.form_mode === 'registration' && (
+          <>
+            {/* 6. CAPACITY & REGISTRATION */}
+            <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4 shadow-mexo-card">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-purple-50 text-[#7C3AED] flex items-center justify-center font-bold text-xs">6</span>
+                  <h2 className="text-sm font-bold text-app-heading">Registration Capacity & Limit</h2>
+                </div>
+                <MexoToggle
+                  checked={formData.enable_response_limit}
+                  onCheckedChange={v => setFormData(s => ({ ...s, enable_response_limit: v }))}
                 />
               </div>
 
-              {/* Live capacity counter */}
-              <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-between text-xs font-bold text-purple-900">
-                <span className="flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-[#7C3AED]" /> Current Capacity:
-                </span>
-                <span>{currentResponsesCount} / {maxLimit} responses received · {spotsRemaining} spots remaining</span>
+              {formData.enable_response_limit && (
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-app-heading mb-1">Maximum Registrations Allowed</label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={formData.response_limit}
+                      onChange={e => setFormData(s => ({ ...s, response_limit: Number(e.target.value) }))}
+                      className="w-full rounded-xl border border-app-border px-3 py-2.5 text-xs text-app-heading outline-none focus:border-[#7C3AED] bg-white font-bold text-slate-900"
+                    />
+                  </div>
+
+                  {/* Live capacity counter */}
+                  <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-between text-xs font-bold text-purple-900">
+                    <span className="flex items-center gap-1.5">
+                      <Users className="w-4 h-4 text-[#7C3AED]" /> Spots Remaining:
+                    </span>
+                    <span>{spotsRemaining} spots available ({currentResponsesCount} registered / {maxLimit} max)</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 7. EVENT / REGISTRATION DETAILS */}
+            <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4 shadow-mexo-card">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-xs">7</span>
+                  <h2 className="text-sm font-bold text-app-heading">Event / Registration Details</h2>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
 
-        {/* 8. EVENT / REGISTRATION FEATURES */}
-        <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4 shadow-mexo-card">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-            <div className="flex items-center gap-2">
-              <span className="w-6 h-6 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center font-bold text-xs">8</span>
-              <h2 className="text-sm font-bold text-app-heading">Registration / Event Features</h2>
-            </div>
-            <MexoToggle
-              checked={formData.enable_event_features}
-              onCheckedChange={v => setFormData(s => ({ ...s, enable_event_features: v }))}
-            />
-          </div>
-
-          {formData.enable_event_features && (
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-              <MexoInput
-                label="Event Name"
-                value={formData.event_name}
-                onChange={e => setFormData(s => ({ ...s, event_name: e.target.value }))}
-                placeholder="e.g. Annual Tech Symposium 2026"
-              />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                 <MexoInput
-                  label="Venue / Location"
-                  value={formData.event_venue}
-                  onChange={e => setFormData(s => ({ ...s, event_venue: e.target.value }))}
-                  placeholder="e.g. Main Auditorium / Zoom"
+                  label="Event Name"
+                  value={formData.event_name}
+                  onChange={e => setFormData(s => ({ ...s, event_name: e.target.value }))}
+                  placeholder="e.g. Annual Tech Symposium 2026"
                 />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <MexoInput
+                    label="Venue / Location"
+                    value={formData.event_venue}
+                    onChange={e => setFormData(s => ({ ...s, event_venue: e.target.value }))}
+                    placeholder="e.g. Main Auditorium / Zoom"
+                  />
+                  <MexoInput
+                    label="Event Date"
+                    value={formData.event_date}
+                    onChange={e => setFormData(s => ({ ...s, event_date: e.target.value }))}
+                    placeholder="e.g. August 20, 2026"
+                  />
+                </div>
                 <MexoInput
-                  label="Event Date"
-                  value={formData.event_date}
-                  onChange={e => setFormData(s => ({ ...s, event_date: e.target.value }))}
-                  placeholder="e.g. August 20, 2026"
+                  label="Registration ID Prefix"
+                  value={formData.registration_prefix}
+                  onChange={e => setFormData(s => ({ ...s, registration_prefix: e.target.value.toUpperCase() }))}
+                  placeholder="MXEV"
+                  hint="Generated ticket code example: MXEV-8F92A1"
                 />
               </div>
-              <MexoInput
-                label="Registration ID Prefix"
-                value={formData.registration_prefix}
-                onChange={e => setFormData(s => ({ ...s, registration_prefix: e.target.value.toUpperCase() }))}
-                placeholder="MXEV"
-                hint="Generated ticket code example: MXEV-8F92A1"
-              />
             </div>
-          )}
-        </div>
 
-        {/* 9. CLOSED FORM EXPERIENCE */}
-        <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4 shadow-mexo-card">
-          <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-            <span className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-xs">9</span>
-            <h2 className="text-sm font-bold text-app-heading">Closed Form Experience</h2>
-          </div>
+            {/* 8. CLOSED REGISTRATION EXPERIENCE */}
+            <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4 shadow-mexo-card">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                <span className="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-xs">8</span>
+                <h2 className="text-sm font-bold text-app-heading">Closed Registration Experience</h2>
+              </div>
 
-          <div className="space-y-3">
-            <MexoInput
-              label="Closed Title"
-              value={formData.closed_title}
-              onChange={e => setFormData(s => ({ ...s, closed_title: e.target.value }))}
-              placeholder="Registration Closed"
-            />
-            <MexoTextarea
-              label="Closed Message"
-              rows={2}
-              value={formData.closed_message}
-              onChange={e => setFormData(s => ({ ...s, closed_message: e.target.value }))}
-              placeholder="Registration for this event has ended..."
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <MexoInput
-                label="Button Label (Optional)"
-                value={formData.closed_button_text}
-                onChange={e => setFormData(s => ({ ...s, closed_button_text: e.target.value }))}
-                placeholder="Visit Website"
-              />
-              <MexoInput
-                label="Button URL (Optional)"
-                value={formData.closed_button_url}
-                onChange={e => setFormData(s => ({ ...s, closed_button_url: e.target.value }))}
-                placeholder="https://mexo.com"
-              />
+              <div className="space-y-3">
+                <MexoInput
+                  label="Closed Title"
+                  value={formData.closed_title}
+                  onChange={e => setFormData(s => ({ ...s, closed_title: e.target.value }))}
+                  placeholder="Registration Closed"
+                />
+                <MexoTextarea
+                  label="Closed Message"
+                  rows={2}
+                  value={formData.closed_message}
+                  onChange={e => setFormData(s => ({ ...s, closed_message: e.target.value }))}
+                  placeholder="Registration for this event has ended..."
+                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <MexoInput
+                    label="Button Label (Optional)"
+                    value={formData.closed_button_text}
+                    onChange={e => setFormData(s => ({ ...s, closed_button_text: e.target.value }))}
+                    placeholder="Visit Website"
+                  />
+                  <MexoInput
+                    label="Button URL (Optional)"
+                    value={formData.closed_button_url}
+                    onChange={e => setFormData(s => ({ ...s, closed_button_url: e.target.value }))}
+                    placeholder="https://mexo.com"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
         {/* 10. ATTACHMENTS & RESOURCES */}
         <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4 shadow-mexo-card">
@@ -1064,6 +1079,26 @@ export const FormSettingsPage: React.FC = () => {
           navigate('/forms');
         }}
       />
+      {/* Purpose Mode Change Warning Modal */}
+      <MexoConfirmDialog
+        open={modeConfirmOpen}
+        onOpenChange={setModeConfirmOpen}
+        title="Change Form Purpose Mode?"
+        description={`Changing to ${targetMode.toUpperCase()} mode will adjust visible settings sections for this form. Existing responses, registration IDs, and saved settings will be preserved.`}
+        confirmLabel="Change Purpose Mode"
+        cancelLabel="Cancel"
+        variant="primary"
+        onConfirm={() => {
+          setFormData(s => ({
+            ...s,
+            form_mode: targetMode,
+            form_type: targetMode === 'quiz' ? 'quiz' : 'form',
+            enable_event_features: targetMode === 'registration',
+          }));
+          setModeConfirmOpen(false);
+        }}
+      />
+
       <MexoToastContainer toasts={toasts} removeToast={removeToast} />
     </AppShell>
   );
