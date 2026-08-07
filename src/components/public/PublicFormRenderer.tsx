@@ -7,16 +7,24 @@ interface PublicFormRendererProps {
   form: Form;
   questions: FormQuestion[];
   isPreview?: boolean;
+  initialAnswers?: Record<string, any>;
+  onAnswerChange?: (answers: Record<string, any>) => void;
   onSubmit?: (answers: { question_id: string; answer_text?: string; answer_json?: any }[]) => Promise<void>;
   submitting?: boolean;
 }
 
 export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
-  form, questions, isPreview = false, onSubmit, submitting = false,
+  form, questions, isPreview = false, initialAnswers, onAnswerChange, onSubmit, submitting = false,
 }) => {
-  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [answers, setAnswers] = useState<Record<string, any>>(() => initialAnswers || {});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [displayQuestions, setDisplayQuestions] = useState<FormQuestion[]>(questions);
+
+  useEffect(() => {
+    if (initialAnswers && Object.keys(initialAnswers).length > 0) {
+      setAnswers(prev => ({ ...initialAnswers, ...prev }));
+    }
+  }, [initialAnswers]);
 
   // Quiz Timer State
   const timeLimitSec = (form.time_limit_minutes || 0) * 60;
@@ -57,9 +65,13 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
   };
 
   const setAnswer = useCallback((questionId: string, value: any) => {
-    setAnswers(prev => ({ ...prev, [questionId]: value }));
+    setAnswers(prev => {
+      const updated = { ...prev, [questionId]: value };
+      onAnswerChange?.(updated);
+      return updated;
+    });
     setErrors(prev => { const e = { ...prev }; delete e[questionId]; return e; });
-  }, []);
+  }, [onAnswerChange]);
 
   const answeredCount = questions.filter(q => {
     const a = answers[q.id];

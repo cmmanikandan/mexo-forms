@@ -76,7 +76,15 @@ const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   if (isAuthenticated) {
     const searchParams = new URLSearchParams(window.location.search);
     const redirectTarget = searchParams.get('redirect');
-    return <Navigate to={redirectTarget || '/home'} replace />;
+    const returnTo = sessionStorage.getItem('mexo_auth_return_to') || redirectTarget;
+    sessionStorage.removeItem('mexo_auth_return_to');
+
+    let safeTarget = '/home';
+    if (returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') && !returnTo.includes(':')) {
+      safeTarget = returnTo;
+    }
+
+    return <Navigate to={safeTarget} replace />;
   }
 
   return <>{children}</>;

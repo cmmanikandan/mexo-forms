@@ -12,7 +12,12 @@ export const responseService = {
   ): Promise<{ success: boolean; responseId?: string; error?: string }> {
     try {
       // 0. Verify Auth session first (single source of truth)
-      const session = await authService.getSession();
+      let session = await authService.getSession();
+
+      if (!session?.user?.id) {
+        // Try refreshing session once
+        session = await authService.refreshSession();
+      }
 
       if (!session?.user?.id) {
         return {
@@ -25,7 +30,7 @@ export const responseService = {
       const activeEmail = session.user.email || respondentEmail || null;
 
       if ((import.meta as any).env?.DEV) {
-        console.debug('Submitting as:', activeUid);
+        console.debug('[SUBMIT] Submitting response as user:', activeUid, activeEmail);
       }
 
       const now = new Date();
@@ -78,6 +83,21 @@ export const responseService = {
 
       response = firstAttempt.data;
       respError = firstAttempt.error;
+
+      // If 401 / JWT expired occurs, refresh session and retry once
+      if (respError && (respError.status === 401 || (respError.message || '').includes('JWT') || (respError.message || '').includes('expired'))) {
+        const refreshed = await authService.refreshSession();
+        if (refreshed?.user?.id) {
+          insertPayload.respondent_id = refreshed.user.id;
+          const retryAttempt = await supabase
+            .from('form_responses')
+            .insert(insertPayload)
+            .select('*')
+            .single();
+          response = retryAttempt.data;
+          respError = retryAttempt.error;
+        }
+      }
 
       // If error mentions completion_time_seconds or device_type column missing, retry without them
       if (respError && respError.message && (respError.message.includes('completion_time_seconds') || respError.message.includes('device_type'))) {
@@ -321,29 +341,20 @@ export const responseService = {
   },
 
   async exportCSV(formId: string, questions: { id: string; question_text: string }[]): Promise<string> {
-    const responses = await responseService.getResponses(formId, 0, 5000);
-    const answers = await responseService.getAllAnswersForForm(formId);
+    const responses = await this.getResponses(formId, 0, 10000);
+    const answers = await this.getAllAnswersForForm(formId);
 
-    const headers = ['Response ID', 'Submitted At', 'Respondent', 'Device', 'Completion Time (s)', ...questions.map(q => q.question_text)];
+    const headers = ['Response ID', 'Submitted At', 'Device', ...questions.map(q => `"${q.question_text.replace(/"/g, '""')}"`)];
     const rows = responses.map(r => {
-      const row: string[] = [
-        r.id,
-        r.submitted_at || '',
-        r.respondent_email || r.respondent_id || 'Anonymous',
-        r.device_type || 'Desktop',
-        String(r.completion_time_seconds || 0),
-        ...questions.map(q => {
-          const ans = answers.find(a => a.response_id === r.id && a.question_id === q.id);
-          if (!ans) return '';
-          if (ans.answer_json !== null && ans.answer_json !== undefined) {
-            return Array.isArray(ans.answer_json) ? ans.answer_json.join(', ') : JSON.stringify(ans.answer_json);
-          }
-          return ans.answer_text || '';
-        }),
-      ];
-      return row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',');
+      const rowAnswers = answers.filter(a => a.response_id === r.id);
+      const qAnswers = questions.map(q => {
+        const ans = rowAnswers.find(a => a.question_id === q.id);
+        const val = ans?.answer_text || (Array.isArray(ans?.answer_json) ? ans.answer_json.join(', ') : (ans?.answer_json ? JSON.stringify(ans.answer_json) : ''));
+        return `"${(val || '').replace(/"/g, '""')}"`;
+      });
+      return [r.id, r.submitted_at || (r as any).created_at || '', r.device_type || 'Desktop', ...qAnswers].join(',');
     });
 
-    return [headers.map(h => `"${h}"`).join(','), ...rows].join('\n');
+    return [headers.join(','), ...rows].join('\n');
   },
 };

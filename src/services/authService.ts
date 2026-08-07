@@ -155,17 +155,32 @@ export const authService = {
   },
 
   async getSession(): Promise<Session | null> {
+    // 1. Try active Supabase Auth session first
     try {
       const { data } = await supabase.auth.getSession();
-      if (data?.session) return data.session;
+      if (data?.session?.user?.id) return data.session;
     } catch (e) {}
 
+    // 2. Check saved session fallback in localStorage
     try {
       const savedSessionStr = localStorage.getItem('mexo_auth_session');
-      if (savedSessionStr) return JSON.parse(savedSessionStr) as Session;
+      if (savedSessionStr) {
+        const savedSession = JSON.parse(savedSessionStr) as Session;
+        if (savedSession?.user?.id) return savedSession;
+      }
     } catch (e) {}
 
     return null;
+  },
+
+  async refreshSession(): Promise<Session | null> {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (!error && data?.session) {
+        return data.session;
+      }
+    } catch (e) {}
+    return this.getSession();
   },
 
   async getUser() {

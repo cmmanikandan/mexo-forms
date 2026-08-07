@@ -35,7 +35,15 @@ export const SignInPage: React.FC = () => {
     const result = await signIn(emailOrUsername, password);
     setLoading(false);
     if (result.success) {
-      navigate(redirectTarget || '/home', { replace: true });
+      const returnTo = sessionStorage.getItem('mexo_auth_return_to') || redirectTarget;
+      sessionStorage.removeItem('mexo_auth_return_to');
+
+      let safeTarget = '/home';
+      if (returnTo && returnTo.startsWith('/') && !returnTo.startsWith('//') && !returnTo.includes(':')) {
+        safeTarget = returnTo;
+      }
+
+      navigate(safeTarget, { replace: true });
     } else {
       setError(result.error || 'Sign in failed. Please check your credentials.');
     }

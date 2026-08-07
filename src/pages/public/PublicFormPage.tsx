@@ -17,7 +17,7 @@ export const PublicFormPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { session, profile, isAuthenticated, isLoading: authLoading, signOut } = useAuth();
+  const { session, profile, authStatus, isAuthenticated, isLoading: authLoading, signOut } = useAuth();
 
   const [form, setForm] = useState<Form | null>(null);
   useDocumentTitle(form?.title || 'Form');
@@ -28,11 +28,13 @@ export const PublicFormPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
-  const [formStartedAt] = useState<number>(() => Date.now());
   const [startedAtISO] = useState<string>(() => new Date().toISOString());
   const [submittedPayload, setSubmittedPayload] = useState<{ question_id: string; answer_text?: string; answer_json?: any }[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [profileCardOpen, setProfileCardOpen] = useState(false);
+
+  // Draft form answers restoration
+  const [restoredAnswers, setRestoredAnswers] = useState<Record<string, any>>({});
 
   useEffect(() => {
     if (!slug || authLoading) return;
@@ -71,6 +73,17 @@ export const PublicFormPage: React.FC = () => {
 
       setForm(f);
 
+      // Check draft form answers saved in sessionStorage
+      try {
+        const savedDraftStr = sessionStorage.getItem(`mexo_form_draft_${f.id}`);
+        if (savedDraftStr) {
+          const parsed = JSON.parse(savedDraftStr);
+          if (parsed && typeof parsed === 'object') {
+            setRestoredAnswers(parsed);
+          }
+        }
+      } catch (e) {}
+
       // Require valid Supabase Session & MEXO Profile for public form views
       if (!isAuthenticated || !session?.user?.id || !profile) {
         setLoading(false);
@@ -94,6 +107,19 @@ export const PublicFormPage: React.FC = () => {
 
     load();
   }, [slug, isAuthenticated, session, profile, authLoading]);
+
+  const handleDraftChange = (answersMap: Record<string, any>) => {
+    if (!form?.id) return;
+    try {
+      sessionStorage.setItem(`mexo_form_draft_${form.id}`, JSON.stringify(answersMap));
+    } catch (e) {}
+  };
+
+  const handleSignInRedirect = () => {
+    const returnTo = location.pathname + location.search + location.hash;
+    sessionStorage.setItem('mexo_auth_return_to', returnTo);
+    navigate(`/signin?redirect=${encodeURIComponent(returnTo)}`);
+  };
 
   // Compute User Initials safely
   const getInitials = (firstName?: string, lastName?: string, email?: string) => {
@@ -125,9 +151,12 @@ export const PublicFormPage: React.FC = () => {
 
       if (result.success) {
         setSubmittedPayload(answers);
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(`mexo_submitted_${form.id}`, result.responseId || 'true');
-        }
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(`mexo_submitted_${form.id}`, result.responseId || 'true');
+          }
+          sessionStorage.removeItem(`mexo_form_draft_${form.id}`);
+        } catch (e) {}
         setSubmitted(true);
       } else {
         setSubmissionError(result.error || 'We couldn\'t submit your response. Please try again.');
@@ -205,8 +234,8 @@ export const PublicFormPage: React.FC = () => {
 
   const quizResults = computeQuizResults();
 
-  // Loading Skeleton State
-  if (loading || authLoading) {
+  // Loading Skeleton State (Do NOT flash auth error while checking session)
+  if (loading || authLoading || authStatus === 'loading') {
     return (
       <div className="min-h-screen bg-app-bg flex items-center justify-center p-4">
         <div className="w-full max-w-2xl bg-white rounded-3xl p-6 border border-app-border shadow-mexo-card space-y-4">
@@ -221,11 +250,8 @@ export const PublicFormPage: React.FC = () => {
     );
   }
 
-  // 1. Unauthenticated -> Show clean MEXO authentication-required screen
+  // 1. Unauthenticated -> Show clean MEXO authentication-required screen ONLY when authStatus === 'unauthenticated'
   if (!isAuthenticated || !session?.user?.id || !profile) {
-    const currentFormUrl = `/f/${slug}`;
-    const signinUrl = `/signin?redirect=${encodeURIComponent(currentFormUrl)}`;
-
     return (
       <div className="min-h-screen bg-app-bg flex flex-col items-center justify-center p-4">
         {/* Top Header */}
@@ -256,8 +282,8 @@ export const PublicFormPage: React.FC = () => {
           <div className="pt-2 space-y-3">
             <button
               id="mexo-signin-required-btn"
-              onClick={() => navigate(signinUrl)}
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8] hover:opacity-95 transition-all shadow-sm active:scale-[0.99]"
+              onClick={handleSignInRedirect}
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8] hover:opacity-95 transition-all shadow-sm active:scale-[0.99] cursor-pointer"
             >
               <LogIn className="w-4 h-4" /> Sign In to MEXO Account
             </button>
@@ -422,7 +448,7 @@ export const PublicFormPage: React.FC = () => {
                 <button
                   id="view-answers-btn"
                   onClick={() => setReviewOpen(true)}
-                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-app-border text-sm font-semibold text-app-heading hover:bg-slate-50 transition-colors"
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-app-border text-sm font-semibold text-app-heading hover:bg-slate-50 transition-colors cursor-pointer"
                 >
                   <Eye className="w-4 h-4 text-[#7C3AED]" /> Review Answers & Details
                 </button>
@@ -433,7 +459,7 @@ export const PublicFormPage: React.FC = () => {
                 <button
                   id="submit-another"
                   onClick={() => { setSubmitted(false); window.scrollTo(0, 0); }}
-                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-app-border text-sm font-semibold text-app-heading hover:bg-slate-50 transition-colors"
+                  className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-app-border text-sm font-semibold text-app-heading hover:bg-slate-50 transition-colors cursor-pointer"
                 >
                   <RefreshCw className="w-4 h-4 text-app-muted" /> Submit another response
                 </button>
@@ -445,7 +471,7 @@ export const PublicFormPage: React.FC = () => {
                   try { window.close(); } catch (e) { /* ignore */ }
                   setTimeout(() => navigate('/home'), 100);
                 }}
-                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[#7C3AED] to-[#0878e8] hover:opacity-90 transition-opacity"
+                className="w-full py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[#7C3AED] to-[#0878e8] hover:opacity-90 transition-opacity cursor-pointer"
               >
                 Done
               </button>
@@ -538,35 +564,27 @@ export const PublicFormPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Submission Error Banner */}
-        {submissionError && (
+        {/* Generic Submission Error Banner (Only shown if NOT an auth warning when user is already authenticated) */}
+        {submissionError && !submissionError.includes('Authentication required') && (
           <div className="mx-6 sm:mx-8 mt-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
               <span>{submissionError}</span>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {(submissionError.includes('Authentication') || submissionError.includes('session') || submissionError.includes('AUTH_SESSION_MISSING')) && (
-                <button
-                  onClick={() => navigate(`/signin?redirect=${encodeURIComponent(`/f/${slug}`)}`)}
-                  className="px-3 py-1 rounded-xl bg-[#7C3AED] text-white text-[11px] font-bold hover:bg-[#6D28D9] transition-colors"
-                >
-                  Sign In Again
-                </button>
-              )}
-              <button
-                onClick={() => setSubmissionError(null)}
-                className="px-3 py-1 rounded-xl bg-rose-600 text-white text-[11px] font-bold hover:bg-rose-700 transition-colors"
-              >
-                Dismiss
-              </button>
-            </div>
+            <button
+              onClick={() => setSubmissionError(null)}
+              className="px-3 py-1 rounded-xl bg-rose-600 text-white text-[11px] font-bold hover:bg-rose-700 transition-colors shrink-0"
+            >
+              Dismiss
+            </button>
           </div>
         )}
 
         <PublicFormRenderer
           form={form}
           questions={questions}
+          initialAnswers={restoredAnswers}
+          onAnswerChange={handleDraftChange}
           onSubmit={handleSubmit}
           submitting={submitting}
         />
