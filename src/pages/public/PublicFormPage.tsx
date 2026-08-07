@@ -7,9 +7,11 @@ import { Form, FormQuestion } from '../../types/forms';
 import { PublicFormRenderer } from '../../components/public/PublicFormRenderer';
 import { MexoSkeleton } from '../../components/common/MexoSkeleton';
 import { MexoModal } from '../../components/common/MexoModal';
+import { getFormAvailability } from '../../utils/formLifecycle';
 import {
   CheckCircle2, AlertCircle, XCircle, Award, Eye, Lock, LogIn, RefreshCw,
   Download, LogOut, ExternalLink, ShieldCheck, UserCheck, AlertTriangle,
+  Calendar, MapPin, Ticket, Mail, Clock, Users
 } from 'lucide-react';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
@@ -28,6 +30,7 @@ export const PublicFormPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [registrationRef, setRegistrationRef] = useState<string>('');
   const [startedAtISO] = useState<string>(() => new Date().toISOString());
   const [submittedPayload, setSubmittedPayload] = useState<{ question_id: string; answer_text?: string; answer_json?: any }[]>([]);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -44,29 +47,6 @@ export const PublicFormPage: React.FC = () => {
       const f = await formService.getFormBySlug(slug);
       if (!f) {
         setError('Form not found or no longer available.');
-        setLoading(false);
-        return;
-      }
-      if (!f.is_published || f.status !== 'published') {
-        setError('This form is not currently available.');
-        setLoading(false);
-        return;
-      }
-      if (!f.accepting_responses) {
-        setError('This form is no longer accepting responses.');
-        setLoading(false);
-        return;
-      }
-
-      // Check start date & expiration
-      const now = new Date();
-      if (f.starts_at && now < new Date(f.starts_at)) {
-        setError(`This form is not open yet. Scheduled to open on ${new Date(f.starts_at).toLocaleString()}`);
-        setLoading(false);
-        return;
-      }
-      if (f.ends_at && now > new Date(f.ends_at)) {
-        setError(`This form expired on ${new Date(f.ends_at).toLocaleString()} and is no longer accepting responses.`);
         setLoading(false);
         return;
       }
@@ -135,10 +115,31 @@ export const PublicFormPage: React.FC = () => {
   const primaryEmail = profile?.primary_address || profile?.username || '';
   const initials = getInitials(profile?.first_name, profile?.last_name, primaryEmail);
 
+  // Generate Registration Reference ID e.g. MXEV-2026-A7K92
+  const generateRegRef = (prefix = 'MXEV') => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    const year = new Date().getFullYear();
+    return `${prefix}-${year}-${code}`;
+  };
+
   const handleSubmit = async (answers: { question_id: string; answer_text?: string; answer_json?: any }[]) => {
     if (!form || submitting) return;
+
+    // Check availability right before submitting
+    const avail = getFormAvailability(form, form.response_count || 0);
+    if (!avail.canSubmit) {
+      setSubmissionError(`${avail.closedTitle}: ${avail.closedMessage}`);
+      return;
+    }
+
     setSubmitting(true);
     setSubmissionError(null);
+
+    const regRef = generateRegRef(form.registration_prefix || 'MXEV');
 
     try {
       const result = await responseService.submitResponse(
@@ -151,6 +152,7 @@ export const PublicFormPage: React.FC = () => {
 
       if (result.success) {
         setSubmittedPayload(answers);
+        setRegistrationRef(regRef);
         try {
           if (typeof localStorage !== 'undefined') {
             localStorage.setItem(`mexo_submitted_${form.id}`, result.responseId || 'true');
@@ -234,7 +236,7 @@ export const PublicFormPage: React.FC = () => {
 
   const quizResults = computeQuizResults();
 
-  // Loading Skeleton State (Do NOT flash auth error while checking session)
+  // Loading Skeleton State
   if (loading || authLoading || authStatus === 'loading') {
     return (
       <div className="min-h-screen bg-app-bg flex items-center justify-center p-4">
@@ -297,8 +299,8 @@ export const PublicFormPage: React.FC = () => {
     );
   }
 
-  // 2. Form Error State
-  if (error) {
+  // 2. Error State
+  if (error || !form) {
     return (
       <div className="min-h-screen bg-app-bg flex items-center justify-center p-4">
         <div className="text-center max-w-sm bg-white p-8 rounded-3xl border border-app-border shadow-mexo-card">
@@ -306,7 +308,7 @@ export const PublicFormPage: React.FC = () => {
             <XCircle className="w-8 h-8 text-rose-500" />
           </div>
           <h2 className="text-lg font-bold text-app-heading mb-2">Form Unavailable</h2>
-          <p className="text-sm text-app-body mb-6">{error}</p>
+          <p className="text-sm text-app-body mb-6">{error || 'Form not found.'}</p>
           <button
             onClick={() => navigate('/home')}
             className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-[#7C3AED]"
@@ -318,11 +320,91 @@ export const PublicFormPage: React.FC = () => {
     );
   }
 
-  // 3. Already Responded State
+  // 3. Form Availability Check (CLOSED / PAUSED / SCHEDULED / FULL)
+  const availability = getFormAvailability(form, form.response_count || 0);
+
+  if (!availability.canSubmit) {
+    return (
+      <div className="min-h-screen bg-app-bg flex flex-col items-center justify-center p-4">
+        <HeaderBar
+          fullName={fullName}
+          primaryEmail={primaryEmail}
+          avatarUrl={profile.avatar_url}
+          initials={initials}
+          onOpenProfile={() => setProfileCardOpen(true)}
+        />
+
+        <div className="w-full max-w-md bg-white rounded-3xl border border-app-border shadow-mexo-card overflow-hidden mt-6">
+          <div className={`h-1.5 ${
+            availability.status === 'PAUSED' ? 'bg-amber-400' : availability.status === 'SCHEDULED' ? 'bg-indigo-500' : 'bg-rose-500'
+          }`} />
+
+          <div className="px-8 py-10 text-center space-y-5">
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto border shadow-xs ${
+              availability.status === 'PAUSED' ? 'bg-amber-50 border-amber-100 text-amber-600' : availability.status === 'SCHEDULED' ? 'bg-indigo-50 border-indigo-100 text-[#7C3AED]' : 'bg-rose-50 border-rose-100 text-rose-600'
+            }`}>
+              {availability.status === 'SCHEDULED' ? (
+                <Clock className="w-8 h-8" />
+              ) : (
+                <Lock className="w-8 h-8" />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border ${availability.badgeColorClass}`}>
+                {availability.badgeLabel}
+              </span>
+              <h2 className="text-xl font-extrabold text-app-heading">{availability.closedTitle}</h2>
+              <h3 className="text-sm font-bold text-[#7C3AED]">{form.title}</h3>
+              <p className="text-xs text-app-body leading-relaxed">{availability.closedMessage}</p>
+            </div>
+
+            {form.closed_button_url && form.closed_button_text && (
+              <div className="pt-2">
+                <a
+                  href={form.closed_button_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-[#7C3AED] to-[#0878e8] hover:opacity-90 transition-opacity"
+                >
+                  {form.closed_button_text} <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            )}
+
+            <div className="pt-4 border-t border-slate-100">
+              <button
+                onClick={() => navigate('/home')}
+                className="px-6 py-2.5 rounded-xl font-semibold text-xs text-app-heading border border-app-border hover:bg-slate-50 transition-colors"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          </div>
+
+          <div className="px-8 py-4 border-t border-app-border bg-slate-50/50 flex items-center justify-center gap-2 text-[11px] text-app-muted">
+            <img src="/logo.png" alt="MEXO Forms" className="w-4 h-4 object-contain" />
+            Powered by <span className="font-bold text-app-heading">MEXO Forms</span>
+          </div>
+        </div>
+
+        <ProfileModal
+          open={profileCardOpen}
+          onOpenChange={setProfileCardOpen}
+          fullName={fullName}
+          primaryEmail={primaryEmail}
+          avatarUrl={profile.avatar_url}
+          initials={initials}
+          onSignOut={signOut}
+        />
+      </div>
+    );
+  }
+
+  // 4. Already Responded State
   if (alreadyResponded) {
     return (
       <div className="min-h-screen bg-app-bg flex flex-col items-center justify-center p-4">
-        {/* Top Header */}
         <HeaderBar
           fullName={fullName}
           primaryEmail={primaryEmail}
@@ -363,14 +445,14 @@ export const PublicFormPage: React.FC = () => {
     );
   }
 
-  // 4. Post-Submit Confirmation Screen
+  // 5. Post-Submit Confirmation Screen (With Registration Reference & Mail Link)
   if (submitted) {
     const showScore = (form?.show_quiz_score ?? true) && quizResults.maxScore > 0;
     const allowReview = (form?.show_response_summary ?? true) && submittedPayload.length > 0;
+    const mailComposerUrl = (import.meta as any).env?.VITE_MEXO_MAIL_URL || 'https://mexo-mail.vercel.app';
 
     return (
       <div className="min-h-screen bg-app-bg flex flex-col items-center justify-center p-4">
-        {/* Header */}
         <HeaderBar
           fullName={fullName}
           primaryEmail={primaryEmail}
@@ -389,6 +471,30 @@ export const PublicFormPage: React.FC = () => {
             <p className="text-xs text-app-body mb-6">
               Your response to <span className="font-bold text-app-heading">{form?.title}</span> has been recorded.
             </p>
+
+            {/* Registration Reference ID Badge */}
+            {registrationRef && (
+              <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border border-purple-100 space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 block flex items-center justify-center gap-1">
+                  <Ticket className="w-3.5 h-3.5" /> Registration Reference ID
+                </span>
+                <div className="text-xl font-black text-slate-900 font-mono tracking-widest">
+                  {registrationRef}
+                </div>
+              </div>
+            )}
+
+            {/* Event Details Box */}
+            {(form.event_name || form.event_venue || form.event_date) && (
+              <div className="mb-6 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-2 text-xs">
+                <h4 className="font-extrabold text-app-heading border-b border-slate-200 pb-1 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-[#7C3AED]" /> Event Details
+                </h4>
+                {form.event_name && <p><span className="font-semibold text-app-muted">Event:</span> {form.event_name}</p>}
+                {form.event_date && <p><span className="font-semibold text-app-muted">Date:</span> {form.event_date}</p>}
+                {form.event_venue && <p className="flex items-center gap-1"><MapPin className="w-3 h-3 text-[#7C3AED]" /> {form.event_venue}</p>}
+              </div>
+            )}
 
             {/* Submitted Identity Box */}
             <div className="mb-6 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center gap-3 text-left">
@@ -453,6 +559,15 @@ export const PublicFormPage: React.FC = () => {
                   <Eye className="w-4 h-4 text-[#7C3AED]" /> Review Answers & Details
                 </button>
               )}
+
+              <a
+                href={mailComposerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50/70 text-sm font-bold text-[#7C3AED] hover:bg-indigo-100 transition-colors"
+              >
+                <Mail className="w-4 h-4 text-[#7C3AED]" /> Open MEXO Mail
+              </a>
 
               {/* Submit another response ONLY if one_response_per_user is FALSE */}
               {!form?.one_response_per_user && form?.accepting_responses && (
@@ -526,8 +641,6 @@ export const PublicFormPage: React.FC = () => {
     );
   }
 
-  if (!form) return null;
-
   return (
     <div className="min-h-screen bg-app-bg py-4 sm:py-6 px-3 sm:px-4 flex flex-col items-center">
       {/* 1. Header Bar */}
@@ -542,7 +655,7 @@ export const PublicFormPage: React.FC = () => {
       {/* 2. Main Form Container */}
       <div className="w-full max-w-2xl bg-white rounded-3xl border border-app-border shadow-mexo-card overflow-hidden mt-4">
         {/* Compact Identity Banner above form */}
-        <div className="px-6 sm:px-8 pt-5 pb-1">
+        <div className="px-6 sm:px-8 pt-5 pb-1 space-y-3">
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               {profile.avatar_url ? (
@@ -562,9 +675,21 @@ export const PublicFormPage: React.FC = () => {
               <ShieldCheck className="w-3 h-3" /> MEXO Verified
             </span>
           </div>
+
+          {/* Remaining Capacity Indicator if enabled */}
+          {form.show_remaining_capacity && availability.totalCapacity !== undefined && (
+            <div className="px-3.5 py-2 rounded-xl bg-purple-50/70 border border-purple-100 text-xs font-bold text-purple-900 flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[#7C3AED]">
+                <Users className="w-3.5 h-3.5" /> Availability Capacity:
+              </span>
+              <span>
+                {availability.currentResponseCount} / {availability.totalCapacity} registered ({availability.remainingCapacity} spots remaining)
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Generic Submission Error Banner (Only shown if NOT an auth warning when user is already authenticated) */}
+        {/* Submission Error Banner */}
         {submissionError && !submissionError.includes('Authentication required') && (
           <div className="mx-6 sm:mx-8 mt-4 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -706,7 +831,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ open, onOpenChange, fullNam
               onOpenChange(false);
               await onSignOut();
             }}
-            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl border border-rose-200 text-xs font-bold text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" /> Sign out
           </button>

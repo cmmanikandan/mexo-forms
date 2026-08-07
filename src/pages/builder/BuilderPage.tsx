@@ -7,7 +7,8 @@ import { Form, FormQuestion, QuestionType } from '../../types/forms';
 import { MexoToastContainer } from '../../components/common/MexoToast';
 import { QuestionCard } from '../../components/builder/QuestionCard';
 import { AutosaveIndicator } from '../../components/builder/AutosaveIndicator';
-import { PublishModal } from '../../components/builder/PublishModal';
+import { QuickOwnerControls } from '../../components/publishing/QuickOwnerControls';
+import { PublishModal } from '../../components/publishing/PublishModal';
 import { PreviewModal } from '../../components/builder/PreviewModal';
 import { MexoButton } from '../../components/common/MexoButton';
 import { MexoSkeleton } from '../../components/common/MexoSkeleton';
@@ -243,6 +244,16 @@ export const BuilderPage: React.FC = () => {
 
       {/* Main canvas */}
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-4">
+        {/* Quick Owner Status & Controls Header */}
+        <QuickOwnerControls
+          form={form}
+          onUpdateForm={async updates => {
+            const updated = await formService.updateForm(form.id, updates);
+            if (updated) setForm(updated);
+          }}
+          onShareForm={() => navigate(`/forms/${id}/share`)}
+        />
+
         {/* Form header editor */}
         <div className="bg-white rounded-2xl border border-app-border overflow-hidden shadow-mexo-card">
           <div className="h-1.5 bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8]" />
@@ -342,9 +353,15 @@ export const BuilderPage: React.FC = () => {
         <>
           <PublishModal
             open={publishOpen}
+            onOpenChange={setPublishOpen}
             form={form}
-            onClose={() => setPublishOpen(false)}
-            onPublished={handlePublished}
+            onSavePublishSettings={async (updates: Partial<Form>) => {
+              const updated = await formService.updateForm(form.id, updates);
+              if (updated) {
+                setForm(updated);
+                addToast({ type: 'success', message: 'Form published successfully!' });
+              }
+            }}
           />
           <PreviewModal
             open={previewOpen}

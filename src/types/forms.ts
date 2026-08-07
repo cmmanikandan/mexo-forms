@@ -18,9 +18,10 @@ export interface MexoProfile {
 }
 
 // =============================================
-// Forms
+// Forms & Lifecycle
 // =============================================
 export type FormStatus = 'draft' | 'published' | 'closed' | 'archived' | 'trashed';
+export type FormLifecycleStatus = 'DRAFT' | 'SCHEDULED' | 'OPEN' | 'PAUSED' | 'CLOSED' | 'FULL' | 'ARCHIVED';
 export type FormType = 'form' | 'quiz';
 export type QuestionType =
   | 'short_text'
@@ -68,6 +69,25 @@ export interface Form {
   is_starred?: boolean;
   created_at: string;
   updated_at: string;
+
+  // Advanced Publishing, Scheduling & Registration Limits
+  manual_closed_at?: string;
+  paused_at?: string;
+  response_limit?: number;
+  show_remaining_capacity?: boolean;
+  closed_title?: string;
+  closed_message?: string;
+  closed_button_text?: string;
+  closed_button_url?: string;
+  timezone?: string;
+  allow_response_editing?: boolean;
+  allow_cancellation?: boolean;
+  waitlist_enabled?: boolean;
+  registration_prefix?: string;
+  event_name?: string;
+  event_date?: string;
+  event_venue?: string;
+
   // Joined fields
   response_count?: number;
   owner?: MexoProfile;
@@ -124,9 +144,10 @@ export interface FormResponse {
   form_id: string;
   respondent_id?: string;
   respondent_email?: string;
-  status: 'in_progress' | 'submitted';
+  status: 'in_progress' | 'submitted' | 'cancelled' | 'waitlisted';
   device_type?: 'Desktop' | 'Mobile' | 'Tablet';
   completion_time_seconds?: number;
+  registration_reference?: string;
   started_at: string;
   submitted_at?: string;
   answers?: FormAnswer[];
