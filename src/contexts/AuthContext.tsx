@@ -64,32 +64,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setAuthStatus('authenticated');
         try {
           localStorage.setItem('mexo_auth_profile', JSON.stringify(p));
-          localStorage.setItem('mexo_auth_session', JSON.stringify(currentSession));
         } catch (e) {}
       } catch (e) {
         console.error('[AUTH] Profile fetch error:', e);
         setProfile(null);
-        setAuthStatus('authenticated'); // Session is valid even if DB profile lookup has issue
+        setAuthStatus('authenticated');
       }
     } else {
-      // Check saved fallback session in localStorage
-      try {
-        const savedSessionStr = localStorage.getItem('mexo_auth_session');
-        const savedProfileStr = localStorage.getItem('mexo_auth_profile');
-
-        if (savedSessionStr && savedProfileStr) {
-          const savedSession = JSON.parse(savedSessionStr);
-          const savedProfile = JSON.parse(savedProfileStr);
-          if (savedSession?.user?.id && savedProfile?.id) {
-            setSession(savedSession);
-            setUser(savedSession.user);
-            setProfile(savedProfile);
-            setAuthStatus('authenticated');
-            return;
-          }
-        }
-      } catch (e) {}
-
       setSession(null);
       setUser(null);
       setProfile(null);

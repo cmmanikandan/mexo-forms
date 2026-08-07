@@ -82,39 +82,7 @@ export const authService = {
           errMsg.includes('database error querying schema') ||
           errMsg.includes('schema');
 
-        // Step 3: If GoTrue returned 500 Database error querying schema, fallback to public.profiles verification
-        if (isServerError) {
-          const profile = await profileService.getProfileByIdentifier(cleanInput);
-          if (profile) {
-            const fallbackUser: any = {
-              id: profile.id,
-              app_metadata: { provider: 'mexo' },
-              user_metadata: {
-                full_name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username,
-                avatar_url: profile.avatar_url,
-                username: profile.username,
-              },
-              aud: 'authenticated',
-              created_at: profile.created_at || new Date().toISOString(),
-              email: profile.primary_address,
-              role: profile.role || 'authenticated',
-              updated_at: profile.updated_at || new Date().toISOString(),
-            };
-
-            const fallbackSession: Session = {
-              access_token: `mexo-session-${profile.id}`,
-              token_type: 'bearer',
-              expires_in: 86400,
-              refresh_token: `mexo-refresh-${profile.id}`,
-              user: fallbackUser,
-            };
-
-            return { session: fallbackSession, user: profile, error: null };
-          }
-
-          return { session: null, user: null, error: 'MEXO Account authentication is temporarily unavailable.', status: errStatus };
-        }
-
+        // Step 3: Handle authentication errors cleanly
         const errCode = (((error as any).code) || '').toLowerCase();
         if (
           errStatus === 401 ||
@@ -155,18 +123,18 @@ export const authService = {
   },
 
   async getSession(): Promise<Session | null> {
-    // 1. Try active Supabase Auth session first
+    // Single source of truth: Active Supabase Auth session
     try {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session?.user?.id) return data.session;
-    } catch (e) {}
-
-    // 2. Check saved session fallback in localStorage
-    try {
-      const savedSessionStr = localStorage.getItem('mexo_auth_session');
-      if (savedSessionStr) {
-        const savedSession = JSON.parse(savedSessionStr) as Session;
-        if (savedSession?.user?.id) return savedSession;
+      const { data, error } = await supabase.auth.getSession();
+      if (!error && data?.session?.user?.id) {
+        return data.session;
+      }
+      if (error) {
+        // Try session refresh
+        const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
+        if (!refreshErr && refreshData?.session?.user?.id) {
+          return refreshData.session;
+        }
       }
     } catch (e) {}
 
