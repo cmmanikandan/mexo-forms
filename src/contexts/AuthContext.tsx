@@ -112,7 +112,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const signIn = async (emailOrUsername: string, password: string) => {
-    setIsLoading(true);
     const { session: newSession, user: userProfile, error } = await authService.signIn(emailOrUsername, password);
     if (newSession?.user) {
       setSession(newSession);
@@ -125,10 +124,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           /* ignore */
         }
       }
-      setIsLoading(false);
       return { success: true };
     }
-    setIsLoading(false);
     return { success: false, error: error || 'Sign in failed' };
   };
 
