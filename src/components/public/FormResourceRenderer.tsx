@@ -14,24 +14,30 @@ interface FormResourceRendererProps {
 }
 
 export function isImageFile(url: string, name?: string): boolean {
+  if (!url) return false;
+  if (url.startsWith('data:image/') || url.includes('image/')) return true;
   const target = (name || url).toLowerCase();
-  return /\.(jpg|jpeg|png|webp|gif|svg|bmp)(\?.*)?$/i.test(target) || url.startsWith('data:image/');
+  return /\.(jpg|jpeg|png|webp|gif|svg|bmp|avif)(\?.*)?$/i.test(target);
 }
 
 export function isPdfFile(url: string, name?: string): boolean {
+  if (!url) return false;
   const target = (name || url).toLowerCase();
-  return /\.pdf(\?.*)?$/i.test(target) || url.includes('/pdf');
+  return /\.pdf(\?.*)?$/i.test(target) || url.includes('/pdf') || url.includes('application/pdf');
 }
 
 export function isDocFile(url: string, name?: string): boolean {
+  if (!url) return false;
   const target = (name || url).toLowerCase();
   return /\.(doc|docx|xls|xlsx|ppt|pptx|txt|csv|zip|rar)(\?.*)?$/i.test(target);
 }
 
 export function getFileExtLabel(url: string, name?: string): string {
+  if (!url) return 'FILE';
   const target = (name || url).toLowerCase();
-  const ext = target.split('.').pop()?.split('?')[0];
-  if (!ext || ext === url) return 'FILE';
+  const clean = target.split('?')[0];
+  const ext = clean.split('.').pop();
+  if (!ext || ext === clean) return 'FILE';
   return ext.toUpperCase();
 }
 
@@ -55,15 +61,22 @@ export const FormResourceRenderer: React.FC<FormResourceRendererProps> = ({
   const isPdf = isPdfFile(url, fileName);
   const extLabel = getFileExtLabel(url, fileName);
 
-  const handleDownload = (e: React.MouseEvent) => {
+  const handleDownload = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch {
+      window.open(url, '_blank');
+    }
   };
 
   /* -------------------------------------------------------------

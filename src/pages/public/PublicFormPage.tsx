@@ -306,6 +306,7 @@ export const PublicFormPage: React.FC = () => {
         }
         setCurrentAnswers({});
         setSubmitted(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         // Draft is kept safe — user can retry
         setSubmissionError(result.error || "We couldn't submit your response. Please try again.");

@@ -11,7 +11,7 @@ import { MexoToggle } from '../../components/common/MexoToggle';
 import { useToast } from '../../hooks/useToast';
 import { MexoToastContainer } from '../../components/common/MexoToast';
 import { useAuth } from '../../contexts/AuthContext';
-import { isImageFile } from '../../components/public/FormResourceRenderer';
+import { isImageFile, FormResourceRenderer } from '../../components/public/FormResourceRenderer';
 import {
   ArrowLeft, Save, Trash2, Copy, Check, Upload, Paperclip, X,
   ExternalLink, Calendar, Clock, Globe, ShieldCheck, Users, Lock, AlertCircle, HelpCircle,
@@ -824,22 +824,11 @@ export const FormSettingsPage: React.FC = () => {
               <label className="block text-xs font-bold text-app-heading">Header / Form Resource (Image, Poster, Guidelines)</label>
               {formData.attachment_name || formData.attachment_url ? (
                 <div className="p-3.5 rounded-2xl bg-white border border-indigo-100 space-y-3">
-                  <div className="flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {isImageFile(formData.attachment_url, formData.attachment_name) ? (
-                        <div className="w-16 h-12 rounded-xl bg-slate-900 overflow-hidden shrink-0 border border-slate-200 shadow-2xs">
-                          <img src={formData.attachment_url} alt={formData.attachment_name} className="w-full h-full object-cover" />
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#7C3AED] flex items-center justify-center font-bold text-xs shrink-0">
-                          <Paperclip className="w-5 h-5" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="font-bold text-app-heading truncate">{formData.attachment_name || 'Header Resource'}</p>
-                        <p className="text-[11px] text-app-muted font-mono truncate max-w-xs">{formData.attachment_url}</p>
-                      </div>
-                    </div>
+                  <div className="flex items-center justify-between gap-3 text-xs pb-2 border-b border-slate-100">
+                    <span className="font-bold text-app-heading truncate flex items-center gap-2">
+                      <Paperclip className="w-4 h-4 text-[#7C3AED]" />
+                      {formData.attachment_name || 'Header Resource'}
+                    </span>
 
                     <div className="flex items-center gap-2 shrink-0">
                       <label className="px-3 py-1.5 rounded-xl bg-purple-50 text-[#7C3AED] text-xs font-bold hover:bg-purple-100 transition-colors cursor-pointer">
@@ -854,18 +843,25 @@ export const FormSettingsPage: React.FC = () => {
                           className="hidden"
                         />
                       </label>
-                      <a href={formData.attachment_url} target="_blank" rel="noreferrer" className="text-[#7C3AED] hover:underline font-bold text-xs">
-                        Preview
-                      </a>
                       <button
                         type="button"
                         onClick={() => setFormData(s => ({ ...s, attachment_name: '', attachment_url: '' }))}
-                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-50"
+                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 font-bold"
                         title="Remove"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     </div>
+                  </div>
+
+                  {/* Live Attachment Preview Component */}
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                    <p className="text-[10px] uppercase font-black tracking-wider text-app-muted mb-1">Live Resource Preview</p>
+                    <FormResourceRenderer
+                      url={formData.attachment_url}
+                      name={formData.attachment_name}
+                      displayMode={formData.attachment_display_mode}
+                    />
                   </div>
 
                   {/* Image Display Mode Selector */}
