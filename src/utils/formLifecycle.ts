@@ -34,7 +34,12 @@ export function getFormAvailability(
   const now = new Date();
   const respCount = currentResponseCount || form.response_count || 0;
 
-  const totalCap = form.response_limit && form.response_limit > 0 ? form.response_limit : undefined;
+  // Single source of truth for form mode
+  const formMode = (form as any).form_mode ?? (form.form_type === 'quiz' ? 'quiz' : 'standard');
+  const isRegistration = formMode === 'registration';
+  const isQuiz = formMode === 'quiz';
+
+  const totalCap = isRegistration && form.response_limit && form.response_limit > 0 ? form.response_limit : undefined;
   const remainingCap = totalCap !== undefined ? Math.max(0, totalCap - respCount) : undefined;
 
   const formatDateStr = (isoString?: string) => {
@@ -56,6 +61,33 @@ export function getFormAvailability(
   const formattedStart = formatDateStr(form.starts_at);
   const formattedEnd = formatDateStr(form.ends_at);
 
+  const resolveClosedTitle = (defaultTitle: string) => {
+    if (isRegistration) {
+      return form.closed_title || defaultTitle;
+    }
+    if (isQuiz) {
+      return 'Assessment Closed';
+    }
+    // Standard mode: ignore stored 'Registration Closed' strings
+    if (form.closed_title && !form.closed_title.toLowerCase().includes('registration')) {
+      return form.closed_title;
+    }
+    return defaultTitle;
+  };
+
+  const resolveClosedMessage = (defaultMessage: string) => {
+    if (isRegistration) {
+      return form.closed_message || defaultMessage;
+    }
+    if (isQuiz) {
+      return 'This assessment is no longer accepting responses.';
+    }
+    if (form.closed_message && !form.closed_message.toLowerCase().includes('event')) {
+      return form.closed_message;
+    }
+    return defaultMessage;
+  };
+
   // 1. Check if draft or not published
   if (!form.is_published || form.status === 'draft') {
     return {
@@ -64,7 +96,7 @@ export function getFormAvailability(
       canSubmit: false,
       badgeLabel: 'DRAFT',
       badgeColorClass: 'bg-slate-100 text-slate-700 border-slate-200',
-      closedTitle: 'Form Draft',
+      closedTitle: isQuiz ? 'Assessment Draft' : (isRegistration ? 'Registration Draft' : 'Form Draft'),
       closedMessage: 'This form is currently a draft and has not been published by the owner.',
       currentResponseCount: respCount,
     };
@@ -78,7 +110,7 @@ export function getFormAvailability(
       canSubmit: false,
       badgeLabel: 'ARCHIVED',
       badgeColorClass: 'bg-slate-100 text-slate-600 border-slate-200',
-      closedTitle: 'Form Archived',
+      closedTitle: isQuiz ? 'Assessment Archived' : (isRegistration ? 'Registration Archived' : 'Form Archived'),
       closedMessage: 'This form has been archived and is no longer accepting responses.',
       currentResponseCount: respCount,
     };
@@ -92,13 +124,11 @@ export function getFormAvailability(
       canSubmit: false,
       badgeLabel: 'PAUSED',
       badgeColorClass: 'bg-amber-100 text-amber-800 border-amber-200',
-      closedTitle: form.closed_title || 'Temporarily Unavailable',
-      closedMessage: form.closed_message || 'The owner has temporarily paused responses. Please check back later.',
+      closedTitle: resolveClosedTitle('Temporarily Unavailable'),
+      closedMessage: resolveClosedMessage('The owner has temporarily paused responses. Please check back later.'),
       currentResponseCount: respCount,
     };
   }
-
-  const isRegistration = (form as any).form_mode === 'registration' || Boolean(form.event_name || form.registration_prefix);
 
   // 4. Check if manually closed by owner or status === 'closed'
   if (form.manual_closed_at || form.status === 'closed' || !form.accepting_responses) {
@@ -108,8 +138,8 @@ export function getFormAvailability(
       canSubmit: false,
       badgeLabel: 'CLOSED',
       badgeColorClass: 'bg-rose-100 text-rose-800 border-rose-200',
-      closedTitle: form.closed_title || (isRegistration ? 'Registration Closed' : 'Form Closed'),
-      closedMessage: form.closed_message || (isRegistration ? 'Registration for this event has ended.' : 'This form is no longer accepting responses.'),
+      closedTitle: resolveClosedTitle(isRegistration ? 'Registration Closed' : 'Form Closed'),
+      closedMessage: resolveClosedMessage(isRegistration ? 'Registration for this event has ended.' : 'This form is no longer accepting responses.'),
       currentResponseCount: respCount,
     };
   }
@@ -122,8 +152,8 @@ export function getFormAvailability(
       canSubmit: false,
       badgeLabel: 'SCHEDULED',
       badgeColorClass: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-      closedTitle: form.closed_title || (isRegistration ? 'Registration Opens Soon' : 'Form Opens Soon'),
-      closedMessage: form.closed_message || (isRegistration ? `Registration opens on ${formattedStart || form.starts_at}.` : `This form will start accepting responses on ${formattedStart || form.starts_at}.`),
+      closedTitle: resolveClosedTitle(isRegistration ? 'Registration Opens Soon' : 'Form Opens Soon'),
+      closedMessage: resolveClosedMessage(isRegistration ? `Registration opens on ${formattedStart || form.starts_at}.` : `This form will start accepting responses on ${formattedStart || form.starts_at}.`),
       formattedStartDate: formattedStart,
       formattedEndDate: formattedEnd,
       currentResponseCount: respCount,
@@ -138,24 +168,24 @@ export function getFormAvailability(
       canSubmit: false,
       badgeLabel: 'CLOSED',
       badgeColorClass: 'bg-rose-100 text-rose-800 border-rose-200',
-      closedTitle: form.closed_title || (isRegistration ? 'Registration Closed' : 'Form Closed'),
-      closedMessage: form.closed_message || (isRegistration ? `Registration ended on ${formattedEnd || form.ends_at}.` : `The response deadline passed on ${formattedEnd || form.ends_at}.`),
+      closedTitle: resolveClosedTitle(isRegistration ? 'Registration Closed' : 'Form Closed'),
+      closedMessage: resolveClosedMessage(isRegistration ? `Registration ended on ${formattedEnd || form.ends_at}.` : `The response deadline passed on ${formattedEnd || form.ends_at}.`),
       formattedStartDate: formattedStart,
       formattedEndDate: formattedEnd,
       currentResponseCount: respCount,
     };
   }
 
-  // 7. Check if response limit capacity reached
-  if (totalCap !== undefined && respCount >= totalCap) {
+  // 7. Check if response limit capacity reached (REGISTRATION MODE ONLY)
+  if (isRegistration && totalCap !== undefined && respCount >= totalCap) {
     return {
       status: 'FULL',
       reason: 'RESPONSE_LIMIT_REACHED',
       canSubmit: false,
       badgeLabel: 'FULL',
       badgeColorClass: 'bg-purple-100 text-purple-800 border-purple-200',
-      closedTitle: form.closed_title || (isRegistration ? 'Registration Full' : 'Form Capacity Reached'),
-      closedMessage: form.closed_message || (isRegistration ? `All ${totalCap} available spots for this event have been filled.` : `This form has reached the maximum capacity of ${totalCap} responses.`),
+      closedTitle: form.closed_title || 'Registration Full',
+      closedMessage: form.closed_message || `All ${totalCap} available spots for this event have been filled.`,
       remainingCapacity: 0,
       totalCapacity: totalCap,
       currentResponseCount: respCount,

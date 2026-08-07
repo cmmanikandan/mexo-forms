@@ -129,7 +129,14 @@ export const FormSettingsPage: React.FC = () => {
     formService.getForm(id).then(f => {
       if (f) {
         setForm(f);
-        const resolvedMode = (f as any).form_mode || (f.form_type === 'quiz' ? 'quiz' : (f.event_name || f.registration_prefix ? 'registration' : 'standard'));
+        const resolvedMode = (f as any).form_mode ?? (f.form_type === 'quiz' ? 'quiz' : 'standard');
+        const defaultClosedTitle = resolvedMode === 'registration'
+          ? 'Registration Closed'
+          : (resolvedMode === 'quiz' ? 'Assessment Closed' : 'Form Closed');
+        const defaultClosedMessage = resolvedMode === 'registration'
+          ? 'Registration for this event has ended. Thank you for your interest.'
+          : 'This form is no longer accepting responses.';
+
         const data = {
           title: f.title || '',
           description: f.description || '',
@@ -168,8 +175,12 @@ export const FormSettingsPage: React.FC = () => {
           event_time: '',
           registration_prefix: f.registration_prefix || 'MXEV',
 
-          closed_title: f.closed_title || 'Registration Closed',
-          closed_message: f.closed_message || 'Registration for this event has ended. Thank you for your interest.',
+          closed_title: f.closed_title && (!f.closed_title.toLowerCase().includes('registration') || resolvedMode === 'registration')
+            ? f.closed_title
+            : defaultClosedTitle,
+          closed_message: f.closed_message && (!f.closed_message.toLowerCase().includes('event') || resolvedMode === 'registration')
+            ? f.closed_message
+            : defaultClosedMessage,
           closed_button_text: f.closed_button_text || '',
           closed_button_url: f.closed_button_url || '',
 
