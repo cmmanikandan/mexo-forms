@@ -33,6 +33,7 @@ interface QuestionCardProps {
   isSelected: boolean;
   index: number;
   totalQuestions: number;
+  allQuestions?: FormQuestion[];
   onClick: () => void;
   onUpdate: (q: FormQuestion) => void;
   onDelete: () => void;
@@ -42,7 +43,7 @@ interface QuestionCardProps {
 }
 
 export const QuestionCard: React.FC<QuestionCardProps> = ({
-  question, isSelected, index, totalQuestions,
+  question, isSelected, index, totalQuestions, allQuestions,
   onClick, onUpdate, onDelete, onDuplicate, onMoveUp, onMoveDown,
 }) => {
   const [localText, setLocalText] = useState(question.question_text);
@@ -427,6 +428,66 @@ export const QuestionCard: React.FC<QuestionCardProps> = ({
                     placeholder="e.g. Extremely"
                     className="w-full rounded-lg border border-app-border px-2 py-1.5 text-xs outline-none"
                   />
+                </div>
+              </div>
+            )}
+
+            {/* Conditional Logic (Show/Hide Rule) */}
+            {index > 0 && allQuestions && allQuestions.length > 1 && (
+              <div className="pt-3 border-t border-app-border space-y-2">
+                <label className="text-[11px] font-bold text-app-heading flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-[#7C3AED]" /> Conditional Logic (Show/Hide Rule)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-[10px] font-bold text-app-muted block mb-1">Show this question IF answer to:</label>
+                    <select
+                      value={question.settings?.show_if_question_id || ''}
+                      onChange={e => {
+                        const val = e.target.value;
+                        const updated = {
+                          ...question,
+                          settings: {
+                            ...question.settings,
+                            show_if_question_id: val || undefined,
+                            show_if_option_value: val ? (question.settings?.show_if_option_value || '') : undefined,
+                          },
+                        };
+                        onUpdate(updated);
+                        formService.updateQuestion(question.id, { settings: updated.settings });
+                      }}
+                      className="w-full bg-slate-50 border border-app-border rounded-xl px-2.5 py-1.5 text-xs text-app-heading outline-none focus:border-[#7C3AED]"
+                    >
+                      <option value="">Always Visible (No Condition)</option>
+                      {allQuestions.slice(0, index).filter(q => q.question_type !== 'page_break').map((q, i) => (
+                        <option key={q.id} value={q.id}>Q{i + 1}: {q.question_text || 'Untitled'}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {question.settings?.show_if_question_id && (
+                    <div>
+                      <label className="text-[10px] font-bold text-app-muted block mb-1">Equals answer value:</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Yes, Option 1"
+                        value={question.settings?.show_if_option_value || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          const updated = {
+                            ...question,
+                            settings: {
+                              ...question.settings,
+                              show_if_option_value: val,
+                            },
+                          };
+                          onUpdate(updated);
+                          formService.updateQuestion(question.id, { settings: updated.settings });
+                        }}
+                        className="w-full bg-slate-50 border border-app-border rounded-xl px-2.5 py-1.5 text-xs text-app-heading outline-none focus:border-[#7C3AED]"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}

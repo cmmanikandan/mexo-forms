@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Form, FormQuestion, FormOption } from '../../types/forms';
+import { getThemeGradient } from '../../utils/themeUtils';
 import { Star, ChevronDown, Clock, AlertTriangle, Paperclip, Upload, X } from 'lucide-react';
 
 interface PublicFormRendererProps {
@@ -139,10 +140,21 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
     }
   };
 
+  const isQuestionVisible = useCallback((q: FormQuestion): boolean => {
+    if (!q.settings?.show_if_question_id || !q.settings?.show_if_option_value) return true;
+    const parentAns = answers[q.settings.show_if_question_id];
+    if (!parentAns) return false;
+    const targetVal = String(q.settings.show_if_option_value).trim().toLowerCase();
+    if (Array.isArray(parentAns)) {
+      return parentAns.some(a => String(a).trim().toLowerCase() === targetVal);
+    }
+    return String(parentAns).trim().toLowerCase() === targetVal;
+  }, [answers]);
+
   const validateAll = () => {
     const newErrors: Record<string, string> = {};
     questions.forEach(q => {
-      if (q.required && q.question_type !== 'page_break') {
+      if (q.required && q.question_type !== 'page_break' && isQuestionVisible(q)) {
         const ans = answers[q.id];
         if (!ans || (Array.isArray(ans) && ans.length === 0) || (typeof ans === 'string' && !ans.trim())) {
           newErrors[q.id] = 'This field is required.';
@@ -155,7 +167,7 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
 
   const handleAutoSubmit = async () => {
     alert('Time is up! Your responses are being automatically submitted.');
-    const payload = questions.filter(q => q.question_type !== 'page_break').map(q => {
+    const payload = questions.filter(q => q.question_type !== 'page_break' && isQuestionVisible(q)).map(q => {
       const ans = answers[q.id];
       const isJson = Array.isArray(ans) || (typeof ans === 'object' && ans !== null);
       return {
@@ -171,7 +183,7 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
     e.preventDefault();
     if (isPreview) return;
     if (!validateAll()) {
-      const firstErr = questions.find(q => q.required && !answers[q.id]);
+      const firstErr = questions.find(q => q.required && isQuestionVisible(q) && !answers[q.id]);
       if (firstErr) {
         // Find page of error
         const errPageIndex = pages.findIndex(p => p.questions.some(q => q.id === firstErr.id));
@@ -183,7 +195,7 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
       return;
     }
 
-    const payload = questions.filter(q => q.question_type !== 'page_break').map(q => {
+    const payload = questions.filter(q => q.question_type !== 'page_break' && isQuestionVisible(q)).map(q => {
       const ans = answers[q.id];
       const isJson = Array.isArray(ans) || (typeof ans === 'object' && ans !== null);
       return {
@@ -196,7 +208,7 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
     await onSubmit?.(payload);
   };
 
-  const currentQuestions = pages[currentPageIndex]?.questions || [];
+  const currentQuestions = (pages[currentPageIndex]?.questions || []).filter(isQuestionVisible);
 
   return (
     <div className="min-h-full relative">
@@ -218,7 +230,7 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
 
       {/* Form header */}
       <div className="border-b border-app-border">
-        <div className="h-1.5 bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8] rounded-t-2xl" />
+        <div className={`h-2.5 bg-gradient-to-r ${getThemeGradient(form.theme_color)} rounded-t-2xl`} />
         <div className="px-6 sm:px-8 py-6">
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-xl sm:text-2xl font-extrabold text-app-heading">{form.title}</h1>

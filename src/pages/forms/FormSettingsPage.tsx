@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { AppShell } from '../../components/layout/AppShell';
 import { formService } from '../../services/formService';
 import { Form } from '../../types/forms';
+import { THEME_OPTIONS } from '../../utils/themeUtils';
 import { MexoModal, MexoConfirmDialog } from '../../components/common/MexoModal';
 import { MexoButton } from '../../components/common/MexoButton';
 import { MexoInput, MexoTextarea } from '../../components/common/MexoInput';
@@ -36,6 +37,7 @@ export const FormSettingsPage: React.FC = () => {
     time_limit_minutes: 0,
     starts_at: '',
     ends_at: '',
+    theme_color: 'violet',
     attachment_url: '',
     attachment_name: '',
     submission_attachment_url: '',
@@ -74,6 +76,7 @@ export const FormSettingsPage: React.FC = () => {
           time_limit_minutes: f.time_limit_minutes ?? 0,
           starts_at: formatDatetimeLocal(f.starts_at),
           ends_at: formatDatetimeLocal(f.ends_at),
+          theme_color: f.theme_color || 'violet',
           attachment_url: f.attachment_url || '',
           attachment_name: f.attachment_name || '',
           submission_attachment_url: f.submission_attachment_url || '',
@@ -195,6 +198,31 @@ export const FormSettingsPage: React.FC = () => {
             onChange={e => setFormData(s => ({ ...s, confirmation_message: e.target.value }))}
             hint="Shown to respondent after successful submission"
           />
+        </div>
+
+        {/* Header Theme Customizer */}
+        <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4">
+          <h2 className="text-sm font-bold text-app-heading">Form Header Theme & Style</h2>
+          <div>
+            <label className="block text-xs font-semibold text-app-heading mb-2">Select Header Banner Color Theme</label>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              {Object.values(THEME_OPTIONS).map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setFormData(s => ({ ...s, theme_color: t.id }))}
+                  className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center gap-2 ${
+                    formData.theme_color === t.id
+                      ? 'border-[#7C3AED] ring-2 ring-purple-200 bg-purple-50/40'
+                      : 'border-app-border hover:border-slate-300 bg-white'
+                  }`}
+                >
+                  <div className={`w-full h-8 rounded-xl ${t.previewBg} shadow-xs`} />
+                  <span className="text-xs font-bold text-app-heading">{t.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Responses & Attempts */}

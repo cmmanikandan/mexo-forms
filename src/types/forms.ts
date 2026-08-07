@@ -61,6 +61,7 @@ export interface Form {
   submission_attachment_name?: string;
   starts_at?: string;
   ends_at?: string;
+  theme_color?: string;
   is_starred?: boolean;
   created_at: string;
   updated_at: string;
@@ -75,6 +76,18 @@ export interface FormSection {
   title: string;
   description?: string;
   position: number;
+}
+
+export interface QuestionSettings {
+  max_rating?: number;
+  min?: number;
+  max?: number;
+  min_label?: string;
+  max_label?: string;
+  allowed_file_types?: string[];
+  // Conditional Logic (Show/Hide)
+  show_if_question_id?: string;
+  show_if_option_value?: string;
 }
 
 export interface FormQuestion {

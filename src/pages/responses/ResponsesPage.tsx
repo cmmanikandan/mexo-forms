@@ -9,7 +9,7 @@ import { MexoSkeleton } from '../../components/common/MexoSkeleton';
 import { MexoEmptyState } from '../../components/common/MexoSkeleton';
 import { ResponseSummaryTab } from '../../components/responses/ResponseSummaryTab';
 import { ResponseTableTab } from '../../components/responses/ResponseTableTab';
-import { ArrowLeft, Download, BarChart2, Table, User, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Download, BarChart2, Table, User, RefreshCw, Printer } from 'lucide-react';
 
 type Tab = 'summary' | 'individual' | 'table';
 
@@ -60,6 +60,10 @@ export const ResponsesPage: React.FC = () => {
     setExporting(false);
   };
 
+  const handlePrintPDF = () => {
+    window.print();
+  };
+
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'summary', label: 'Summary', icon: <BarChart2 className="w-4 h-4" /> },
     { id: 'individual', label: 'Individual', icon: <User className="w-4 h-4" /> },
@@ -100,6 +104,15 @@ export const ResponsesPage: React.FC = () => {
               onClick={loadData}
             >
               Refresh
+            </MexoButton>
+            <MexoButton
+              id="export-pdf-summary"
+              variant="secondary"
+              size="sm"
+              leftIcon={<Printer className="w-4 h-4 text-[#7C3AED]" />}
+              onClick={handlePrintPDF}
+            >
+              Export PDF Summary
             </MexoButton>
             <MexoButton
               id="export-csv"

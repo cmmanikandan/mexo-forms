@@ -286,6 +286,7 @@ export const BuilderPage: React.FC = () => {
             isSelected={selectedQId === question.id}
             index={idx}
             totalQuestions={questions.length}
+            allQuestions={questions}
             onClick={() => setSelectedQId(selectedQId === question.id ? null : question.id)}
             onUpdate={handleQuestionUpdate}
             onDelete={() => handleQuestionDelete(question.id)}
