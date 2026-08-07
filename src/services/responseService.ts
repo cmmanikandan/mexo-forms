@@ -171,6 +171,15 @@ export const responseService = {
   },
 
   async getResponses(formId: string, page = 0, pageSize = 50): Promise<FormResponse[]> {
+    // 1. Try owner RPC first for maximum reliability & permission clearance
+    try {
+      const { data: ownerData, error: ownerErr } = await supabase.rpc('get_owner_form_responses', { p_form_id: formId });
+      if (!ownerErr && ownerData && ownerData.length > 0) {
+        return ownerData as FormResponse[];
+      }
+    } catch (e) {}
+
+    // 2. Direct Table Query
     const { data, error } = await supabase
       .from('form_responses')
       .select('*')
@@ -183,7 +192,7 @@ export const responseService = {
       return data as FormResponse[];
     }
 
-    // RPC Fallback (bypasses RLS if direct SELECT returned empty)
+    // 3. General RPC Fallback
     try {
       const { data: rpcData, error: rpcErr } = await supabase.rpc('get_form_responses', { p_form_id: formId });
       if (!rpcErr && rpcData && rpcData.length > 0) {
@@ -248,7 +257,8 @@ export const responseService = {
       const { data: directResponses } = await supabase
         .from('form_responses')
         .select('submitted_at, created_at, started_at, status, device_type, completion_time_seconds')
-        .eq('form_id', formId);
+        .eq('form_id', formId)
+        .eq('status', 'submitted');
 
       if (directResponses && directResponses.length > 0) {
         allResponses = directResponses as unknown as FormResponse[];

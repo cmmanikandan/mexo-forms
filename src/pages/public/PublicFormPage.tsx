@@ -722,8 +722,18 @@ export const PublicFormPage: React.FC = () => {
               )}
 
               {!form?.one_response_per_user && form?.accepting_responses && (
-                <button id="submit-another" onClick={() => { setSubmitted(false); window.scrollTo(0, 0); }}
-                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-app-border text-sm font-semibold text-app-heading hover:bg-slate-50 transition-colors cursor-pointer min-h-[44px]">
+                <button
+                  id="submit-another"
+                  onClick={() => {
+                    submissionIdempotencyKey.current = crypto.randomUUID();
+                    setSubmitted(false);
+                    setCurrentAnswers({});
+                    setRestoredAnswers({});
+                    setSubmissionError(null);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-app-border text-sm font-semibold text-app-heading hover:bg-slate-50 transition-colors cursor-pointer min-h-[44px]"
+                >
                   <RefreshCw className="w-4 h-4 text-app-muted" /> Submit another response
                 </button>
               )}
@@ -919,6 +929,8 @@ export const PublicFormPage: React.FC = () => {
           onAnswerChange={handleAnswerChange}
           onSubmit={handleSubmit}
           submitting={submitting}
+          submissionError={submissionError}
+          onClearError={() => setSubmissionError(null)}
           headerSlot={
             <div className="flex items-center gap-2">
               <DraftSaveIndicator status={saveStatus} />

@@ -12,12 +12,14 @@ interface PublicFormRendererProps {
   onAnswerChange?: (answers: Record<string, any>) => void;
   onSubmit?: (answers: { question_id: string; answer_text?: string; answer_json?: any }[]) => Promise<void>;
   submitting?: boolean;
+  submissionError?: string | null;
+  onClearError?: () => void;
   /** Optional slot rendered to the right of the form title (e.g. three-dot action menu) */
   headerSlot?: React.ReactNode;
 }
 
 export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
-  form, questions, isPreview = false, initialAnswers, onAnswerChange, onSubmit, submitting = false, headerSlot,
+  form, questions, isPreview = false, initialAnswers, onAnswerChange, onSubmit, submitting = false, submissionError, onClearError, headerSlot,
 }) => {
   const [answers, setAnswers] = useState<Record<string, any>>(() => initialAnswers || {});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -364,6 +366,27 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
             </div>
           ))}
 
+          {/* Submission Failure Retry Banner */}
+          {submissionError && (
+            <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                <div>
+                  <h4 className="text-xs font-extrabold text-rose-950">Submission Failed</h4>
+                  <p className="text-xs text-rose-800 font-medium">{submissionError}</p>
+                  <p className="text-[11px] text-rose-600 mt-0.5">Your answers are still saved safely on this device.</p>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 transition-colors shrink-0 cursor-pointer shadow-xs"
+              >
+                {submitting ? 'Retrying…' : 'Try Again'}
+              </button>
+            </div>
+          )}
+
           {/* Page Navigation & Submit Controls */}
           <div className="pt-6 border-t border-app-border flex items-center justify-between gap-3">
             {currentPageIndex > 0 ? (
@@ -390,9 +413,16 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
                   id="form-submit-btn"
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 shadow-sm"
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 shadow-sm min-w-[120px]"
                 >
-                  {submitting ? 'Submitting…' : 'Submit'}
+                  {submitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Submitting…</span>
+                    </>
+                  ) : (
+                    'Submit'
+                  )}
                 </button>
               ) : (
                 <div className="px-6 py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#7C3AED] to-[#0878e8] opacity-60">
