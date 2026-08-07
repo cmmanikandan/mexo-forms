@@ -30,7 +30,8 @@ export const ResponseTableTab: React.FC<ResponseTableTabProps> = ({ questions, r
       const q = search.toLowerCase();
       r = r.filter(resp =>
         (resp.respondent_email || '').toLowerCase().includes(q) ||
-        (resp.id || '').toLowerCase().includes(q)
+        (resp.id || '').toLowerCase().includes(q) ||
+        questions.some(qObj => getAnswer(resp.id, qObj.id).toLowerCase().includes(q))
       );
     }
     r.sort((a, b) => {
