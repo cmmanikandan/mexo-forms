@@ -25,6 +25,7 @@ export const SignInPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading || isLoading) return;
     if (!emailOrUsername.trim() || !password.trim()) {
       setError('Please enter your MEXO email/username and password.');
       return;

@@ -4,87 +4,94 @@ import { MexoProfile } from '../types/forms';
 import { profileService } from './profileService';
 
 export const authService = {
-  async signIn(emailOrUsername: string, password: string): Promise<{ session: Session | null; user: MexoProfile | null; error: string | null }> {
+  /**
+   * Resolves input username (e.g. 927624bit060) or email to primary MEXO email address
+   */
+  async resolveMexoEmail(input: string): Promise<string> {
+    const value = input.trim().toLowerCase();
+    if (!value) return '';
+    if (value.includes('@')) return value;
+
+    try {
+      const profile = await profileService.getProfileByIdentifier(value);
+      if (profile?.primary_address) {
+        return profile.primary_address.toLowerCase();
+      }
+    } catch (err) {
+      console.error('[AUTH] Profile username resolution error:', err);
+    }
+
+    return `${value}@mexo.com`;
+  },
+
+  /**
+   * Authenticates an existing MEXO Account using Supabase Auth.
+   * NO signup, NO auto-account creation. MEXO Forms only consumes existing accounts.
+   */
+  async signIn(
+    emailOrUsername: string,
+    password: string
+  ): Promise<{ session: Session | null; user: MexoProfile | null; error: string | null; status?: number }> {
     try {
       const cleanInput = emailOrUsername.trim().toLowerCase();
       const cleanPassword = password.trim();
 
       if (!cleanInput || !cleanPassword) {
-        return { session: null, user: null, error: 'Please enter your email/username and password.' };
+        return { session: null, user: null, error: 'Please enter your MEXO email/username and password.' };
       }
 
-      // 1. Look up profile in shared profiles table
-      const profile = await profileService.getProfileByIdentifier(cleanInput);
+      // Step 1: Resolve username (927624bit060) to primary MEXO email (927624bit060@mexo.com)
+      const resolvedEmail = await this.resolveMexoEmail(cleanInput);
 
-      const cleanUsername = cleanInput.includes('@') ? cleanInput.split('@')[0] : cleanInput;
-      const cleanEmail = cleanInput.includes('@') ? cleanInput : `${cleanInput}@mexo.com`;
+      // Step 2: Authenticate ONLY using supabase.auth.signInWithPassword
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: resolvedEmail,
+        password: cleanPassword,
+      });
 
-      // Determine candidate emails to attempt Supabase Auth login
-      const candidateEmails: string[] = [];
-      if (profile?.primary_address) {
-        candidateEmails.push(profile.primary_address.toLowerCase());
-      }
-      candidateEmails.push(cleanEmail);
-      if (profile?.username) {
-        candidateEmails.push(`${profile.username.toLowerCase()}@mexo.com`);
-      }
+      if (error) {
+        // Safe development error logging without exposing secrets
+        if ((import.meta as any).env?.DEV) {
+          console.error('MEXO Forms authentication failure', {
+            status: error.status,
+            code: (error as any).code,
+            message: error.message,
+            name: error.name,
+          });
+        }
 
-      // Deduplicate
-      const uniqueEmails = Array.from(new Set(candidateEmails));
+        const errStatus = error.status || 0;
+        const errMsg = (error.message || '').toLowerCase();
+        const errCode = (((error as any).code) || '').toLowerCase();
 
-      let activeSession: Session | null = null;
-
-      // 2. Try Supabase Auth signInWithPassword for candidate emails
-      for (const email of uniqueEmails) {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password: cleanPassword,
-        });
-
-        if (!error && data.session) {
-          activeSession = data.session;
-          break;
+        if (
+          errStatus === 401 ||
+          errCode.includes('invalid') ||
+          errMsg.includes('invalid login credentials') ||
+          errMsg.includes('invalid_grant')
+        ) {
+          return { session: null, user: null, error: 'Incorrect MEXO ID or password.', status: 401 };
+        } else if (errStatus >= 500) {
+          return { session: null, user: null, error: 'MEXO Account authentication is temporarily unavailable.', status: errStatus };
+        } else if (errStatus === 0 || errMsg.includes('fetch') || errMsg.includes('network')) {
+          return { session: null, user: null, error: 'Unable to connect to MEXO Account. Check your connection and try again.', status: 0 };
+        } else {
+          return { session: null, user: null, error: error.message || 'Unable to sign in. Please try again.', status: errStatus };
         }
       }
 
-      // 3. Fallback provisioning: If Supabase Auth account doesn't exist yet, but credentials match default profile
-      if (!activeSession) {
-        const isDefaultPassword =
-          cleanPassword === cleanUsername ||
-          (profile?.username && cleanPassword === profile.username.toLowerCase());
-        const isAdminPassword =
-          (profile?.role === 'system_admin' || cleanInput === 'admin' || cleanInput === 'admin@mexo.com') &&
-          (cleanPassword === 'MexoAdmin#2026!SecureKey' || cleanPassword === 'admin123#Secure');
-
-        if (isDefaultPassword || isAdminPassword) {
-          const targetEmail = profile?.primary_address || cleanEmail;
-          try {
-            await supabase.auth.signUp({
-              email: targetEmail,
-              password: cleanPassword,
-            });
-            const { data: reAuth } = await supabase.auth.signInWithPassword({
-              email: targetEmail,
-              password: cleanPassword,
-            });
-            if (reAuth.session) {
-              activeSession = reAuth.session;
-            }
-          } catch (e) {
-            console.warn('[AUTH] Provisioning fallback failed:', e);
-          }
-        }
+      if (!data.session) {
+        return { session: null, user: null, error: 'Unable to sign in. Please try again.' };
       }
 
-      if (!activeSession) {
-        return { session: null, user: null, error: 'Invalid MEXO Account credentials.' };
-      }
-
-      // Fetch profile using authenticated session user ID
-      const userProfile = (await profileService.getProfileById(activeSession.user.id)) || profile;
-      return { session: activeSession, user: userProfile, error: null };
+      // Step 3: Fetch public.profiles AFTER authentication succeeds
+      const userProfile = await profileService.getProfileById(data.session.user.id);
+      return { session: data.session, user: userProfile, error: null };
     } catch (err: any) {
-      return { session: null, user: null, error: err?.message || 'Sign in failed.' };
+      if ((import.meta as any).env?.DEV) {
+        console.error('MEXO Forms auth exception', { message: err?.message, name: err?.name });
+      }
+      return { session: null, user: null, error: 'Unable to sign in. Please try again.' };
     }
   },
 
@@ -106,4 +113,3 @@ export const authService = {
     return supabase.auth.onAuthStateChange(callback);
   },
 };
-

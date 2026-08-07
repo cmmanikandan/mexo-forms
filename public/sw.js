@@ -25,12 +25,15 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
 
-  // Network-first for API/Supabase calls
-  if (request.url.includes('supabase.co') || request.url.includes('/rest/') || request.url.includes('/auth/')) {
-    event.respondWith(
-      fetch(request).catch(() => caches.match(request))
-    );
-    return;
+  // NEVER intercept/cache Supabase, auth, token, API, or non-GET requests
+  if (
+    request.method !== 'GET' ||
+    request.url.includes('supabase.co') ||
+    request.url.includes('/auth/') ||
+    request.url.includes('/rest/') ||
+    request.url.includes('/token')
+  ) {
+    return; // Pass through directly to browser network
   }
 
   // Navigation requests for SPA routes: try network first, fallback to cached /index.html
@@ -41,7 +44,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for static assets
+  // Cache-first for static local assets
   event.respondWith(
     caches.match(request).then((cached) => cached || fetch(request))
   );
