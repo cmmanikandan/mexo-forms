@@ -40,17 +40,6 @@ export const SignInPage: React.FC = () => {
     }
   };
 
-  const handleDemoFill = (type: 'admin' | 'user') => {
-    if (type === 'admin') {
-      setEmailOrUsername('admin@mexo.com');
-      setPassword('MexoAdmin#2026!SecureKey');
-    } else {
-      setEmailOrUsername('demo@mexo.com');
-      setPassword('demo1234');
-    }
-    setError('');
-  };
-
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 sm:p-6 relative font-sans">
       {/* Top back navigation */}
@@ -68,10 +57,8 @@ export const SignInPage: React.FC = () => {
       <div className="w-full max-w-md bg-white rounded-3xl border border-app-border shadow-mexo-card p-6 sm:p-8 space-y-6 relative z-10 my-10">
         {/* Logo & Header */}
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#7C3AED] via-[#6366F1] to-[#0878e8] p-0.5 mx-auto shadow-md">
-            <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center p-1.5 overflow-hidden">
-              <img src="/logo.png" alt="MEXO Forms" className="w-full h-full object-contain" />
-            </div>
+          <div className="w-12 h-12 mx-auto">
+            <img src="/logo.png" alt="MEXO Forms" className="w-full h-full object-contain" />
           </div>
           <div>
             <h1 className="text-xl font-extrabold text-app-heading tracking-tight">Sign In to MEXO Forms</h1>
@@ -135,32 +122,11 @@ export const SignInPage: React.FC = () => {
             size="lg"
             loading={loading || isLoading}
             rightIcon={!(loading || isLoading) ? <ArrowRight className="w-4 h-4 ml-1" /> : undefined}
-            className="w-full mt-2 py-3.5 text-sm font-extrabold rounded-2xl bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8] hover:opacity-95 transition-all shadow-sm"
+            className="w-full mt-2 py-3.5 text-sm font-extrabold rounded-2xl bg-gradient-to-tr from-[#7C3AED] via-[#6366F1] to-[#0878e8] hover:opacity-95 transition-all shadow-sm cursor-pointer"
           >
             Sign In to Account
           </MexoButton>
         </form>
-
-        {/* Quick Demo Credentials */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-2">
-          <span className="text-[11px] font-bold text-app-muted">Quick Test Accounts:</span>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => handleDemoFill('admin')}
-              className="px-3 py-1 rounded-xl text-[11px] font-bold bg-white border border-slate-200 text-[#7C3AED] hover:bg-purple-50 transition-colors shadow-2xs"
-            >
-              Admin
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoFill('user')}
-              className="px-3 py-1 rounded-xl text-[11px] font-bold bg-white border border-slate-200 text-app-heading hover:bg-slate-100 transition-colors shadow-2xs"
-            >
-              Demo User
-            </button>
-          </div>
-        </div>
 
         {/* Footer / MEXO Mail Link */}
         <div className="pt-4 border-t border-slate-100 text-center">

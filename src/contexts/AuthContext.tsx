@@ -83,14 +83,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           }
         }
       }
-
-      if ((import.meta as any).env?.DEV) {
-        console.debug('MEXO Forms Auth', {
-          hasSession: !!currentSession,
-          authUserId: currentSession?.user?.id,
-          authEmail: currentSession?.user?.email,
-        });
-      }
     };
 
     const initialize = async () => {
