@@ -377,4 +377,50 @@ export const responseService = {
 
     return [headers.join(','), ...rows].join('\n');
   },
+
+  async getUserSubmittedForms(userId: string): Promise<{
+    response_id: string;
+    form_id: string;
+    form_title: string;
+    form_description: string;
+    form_slug: string;
+    form_mode: string;
+    registration_ref: string;
+    submitted_at: string;
+    owner_name: string;
+    owner_email: string;
+  }[]> {
+    try {
+      const { data, error } = await supabase.rpc('get_user_submitted_forms', { p_user_id: userId });
+      if (!error && data && data.length > 0) {
+        return data;
+      }
+    } catch (e) {}
+
+    try {
+      const { data: responses } = await supabase
+        .from('form_responses')
+        .select('id, form_id, registration_ref, submitted_at, forms(id, title, description, slug, form_mode)')
+        .eq('respondent_id', userId)
+        .eq('status', 'submitted')
+        .order('submitted_at', { ascending: false });
+
+      if (responses && responses.length > 0) {
+        return responses.map((r: any) => ({
+          response_id: r.id,
+          form_id: r.forms?.id || r.form_id,
+          form_title: r.forms?.title || 'Untitled Form',
+          form_description: r.forms?.description || '',
+          form_slug: r.forms?.slug || '',
+          form_mode: r.forms?.form_mode || 'standard',
+          registration_ref: r.registration_ref || '',
+          submitted_at: r.submitted_at || new Date().toISOString(),
+          owner_name: 'MEXO User',
+          owner_email: '',
+        }));
+      }
+    } catch (e) {}
+
+    return [];
+  },
 };
