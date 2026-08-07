@@ -10,6 +10,7 @@ import { PublicFormRenderer } from '../../components/public/PublicFormRenderer';
 import { FormActionsMenu } from '../../components/public/FormActionsMenu';
 import { AboutMexoFormsModal } from '../../components/public/AboutMexoFormsModal';
 import { DraftSaveIndicator } from '../../components/public/DraftSaveIndicator';
+import { FormResourceRenderer } from '../../components/public/FormResourceRenderer';
 import { MexoSkeleton } from '../../components/common/MexoSkeleton';
 import { MexoModal } from '../../components/common/MexoModal';
 import { getFormAvailability } from '../../utils/formLifecycle';
@@ -683,19 +684,11 @@ export const PublicFormPage: React.FC = () => {
 
             {/* Download Attachment */}
             {form?.submission_attachment_url && (
-              <div className="mb-5 p-4 rounded-2xl bg-slate-50 border border-app-border flex items-center justify-between gap-3 text-left">
-                <div className="flex items-center gap-3">
-                  <Download className="w-5 h-5 text-[#7C3AED]" />
-                  <div>
-                    <p className="text-xs font-bold text-app-heading">{form.submission_attachment_name || 'Submission Resource'}</p>
-                    <p className="text-[11px] text-app-muted">Provided by form creator</p>
-                  </div>
-                </div>
-                <a href={form.submission_attachment_url} target="_blank" rel="noreferrer"
-                  className="px-3 py-1.5 rounded-xl bg-[#7C3AED] text-white text-xs font-bold hover:opacity-90 transition-opacity flex-shrink-0">
-                  Download
-                </a>
-              </div>
+              <FormResourceRenderer
+                url={form.submission_attachment_url}
+                name={form.submission_attachment_name}
+                isPostSubmission
+              />
             )}
 
             {/* Action Buttons */}

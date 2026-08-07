@@ -11,6 +11,7 @@ import { MexoToggle } from '../../components/common/MexoToggle';
 import { useToast } from '../../hooks/useToast';
 import { MexoToastContainer } from '../../components/common/MexoToast';
 import { useAuth } from '../../contexts/AuthContext';
+import { isImageFile } from '../../components/public/FormResourceRenderer';
 import {
   ArrowLeft, Save, Trash2, Copy, Check, Upload, Paperclip, X,
   ExternalLink, Calendar, Clock, Globe, ShieldCheck, Users, Lock, AlertCircle, HelpCircle,
@@ -99,6 +100,7 @@ export const FormSettingsPage: React.FC = () => {
     // Attachments & Resources
     attachment_url: '',
     attachment_name: '',
+    attachment_display_mode: 'original' as 'original' | 'banner' | 'compact',
     submission_attachment_url: '',
     submission_attachment_name: '',
   });
@@ -166,6 +168,7 @@ export const FormSettingsPage: React.FC = () => {
 
           attachment_url: f.attachment_url || '',
           attachment_name: f.attachment_name || '',
+          attachment_display_mode: (f as any).attachment_display_mode || 'original',
           submission_attachment_url: f.submission_attachment_url || '',
           submission_attachment_name: f.submission_attachment_name || '',
         };
@@ -280,9 +283,10 @@ export const FormSettingsPage: React.FC = () => {
 
       attachment_url: formData.attachment_url,
       attachment_name: formData.attachment_name,
+      attachment_display_mode: formData.attachment_display_mode,
       submission_attachment_url: formData.submission_attachment_url,
       submission_attachment_name: formData.submission_attachment_name,
-    };
+    } as any;
 
     const updated = await formService.updateForm(id, payload);
     setSaving(false);
@@ -817,27 +821,80 @@ export const FormSettingsPage: React.FC = () => {
           <div className="space-y-4">
             {/* Header Attachment */}
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-              <label className="block text-xs font-bold text-app-heading">Header / Form Resource (Guidelines, Brochure)</label>
+              <label className="block text-xs font-bold text-app-heading">Header / Form Resource (Image, Poster, Guidelines)</label>
               {formData.attachment_name || formData.attachment_url ? (
-                <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-indigo-100 text-xs">
-                  <span className="font-semibold text-app-heading truncate flex items-center gap-2">
-                    <Paperclip className="w-4 h-4 text-[#7C3AED]" />
-                    {formData.attachment_name || 'Header Resource'}
-                  </span>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {formData.attachment_url && (
-                      <a href={formData.attachment_url} target="_blank" rel="noreferrer" className="text-[#7C3AED] hover:underline font-bold">
+                <div className="p-3.5 rounded-2xl bg-white border border-indigo-100 space-y-3">
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {isImageFile(formData.attachment_url, formData.attachment_name) ? (
+                        <div className="w-16 h-12 rounded-xl bg-slate-900 overflow-hidden shrink-0 border border-slate-200 shadow-2xs">
+                          <img src={formData.attachment_url} alt={formData.attachment_name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#7C3AED] flex items-center justify-center font-bold text-xs shrink-0">
+                          <Paperclip className="w-5 h-5" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-bold text-app-heading truncate">{formData.attachment_name || 'Header Resource'}</p>
+                        <p className="text-[11px] text-app-muted font-mono truncate max-w-xs">{formData.attachment_url}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label className="px-3 py-1.5 rounded-xl bg-purple-50 text-[#7C3AED] text-xs font-bold hover:bg-purple-100 transition-colors cursor-pointer">
+                        Replace
+                        <input
+                          type="file"
+                          disabled={uploadingHeader}
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) handleFileUpload(file, 'header');
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                      <a href={formData.attachment_url} target="_blank" rel="noreferrer" className="text-[#7C3AED] hover:underline font-bold text-xs">
                         Preview
                       </a>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setFormData(s => ({ ...s, attachment_name: '', attachment_url: '' }))}
-                      className="text-rose-500 hover:text-rose-700"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(s => ({ ...s, attachment_name: '', attachment_url: '' }))}
+                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-50"
+                        title="Remove"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Image Display Mode Selector */}
+                  {isImageFile(formData.attachment_url, formData.attachment_name) && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <label className="block text-[11px] font-bold text-app-heading mb-1.5">Image Display Mode</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { id: 'original', label: 'Original Ratio', desc: 'Full image without cropping' },
+                          { id: 'banner', label: 'Banner Mode', desc: 'Wide header presentation' },
+                          { id: 'compact', label: 'Compact', desc: 'Centered, smaller instructions' },
+                        ].map(m => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setFormData(s => ({ ...s, attachment_display_mode: m.id as any }))}
+                            className={`p-2 rounded-xl border text-left transition-all ${
+                              formData.attachment_display_mode === m.id
+                                ? 'border-[#7C3AED] bg-purple-50 text-[#7C3AED] font-bold'
+                                : 'border-slate-200 hover:border-slate-300 text-app-heading'
+                            }`}
+                          >
+                            <div className="text-[11px]">{m.label}</div>
+                            <div className="text-[9px] text-app-muted mt-0.5 leading-tight">{m.desc}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center gap-3">

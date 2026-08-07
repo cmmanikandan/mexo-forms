@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Form, FormQuestion, FormOption } from '../../types/forms';
 import { getThemeGradient } from '../../utils/themeUtils';
 import { Star, ChevronDown, Clock, AlertTriangle, Paperclip, Upload, X } from 'lucide-react';
+import { FormResourceRenderer } from './FormResourceRenderer';
 
 interface PublicFormRendererProps {
   form: Form;
@@ -263,20 +264,11 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
 
           {/* Form Header Attachment */}
           {form.attachment_url && (
-            <div className="mt-3 p-3 rounded-2xl bg-slate-50 border border-app-border flex items-center gap-3">
-              <Paperclip className="w-4 h-4 text-[#7C3AED] flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-app-heading truncate">{form.attachment_name || 'Form Attachment'}</p>
-                <a
-                  href={form.attachment_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[11px] text-[#7C3AED] font-bold hover:underline"
-                >
-                  View / Download Attachment →
-                </a>
-              </div>
-            </div>
+            <FormResourceRenderer
+              url={form.attachment_url}
+              name={form.attachment_name}
+              displayMode={(form as any).attachment_display_mode || 'original'}
+            />
           )}
 
           {questions.some(q => q.required) && (
