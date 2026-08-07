@@ -2,27 +2,26 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { AppShell } from '../../components/layout/AppShell';
-import { MexoAvatar } from '../../components/common/MexoAvatar';
 import { MexoButton } from '../../components/common/MexoButton';
-import { MexoInput, MexoTextarea } from '../../components/common/MexoInput';
+import { MexoInput } from '../../components/common/MexoInput';
 import { MexoToggle } from '../../components/common/MexoToggle';
 import { PWAInstallButton } from '../../components/common/PWAInstallButton';
 import { useToast } from '../../hooks/useToast';
 import { MexoToastContainer } from '../../components/common/MexoToast';
 import {
-  User, Sliders, Palette, Bell, HardDrive, Smartphone,
+  User, Sliders, Bell, HardDrive,
   ExternalLink, Save, CheckCircle2, RefreshCw, Info,
-  ChevronRight, Shield, Mail,
+  ChevronRight, Mail, Shield, Smartphone, KeyRound
 } from 'lucide-react';
 
-type Section = 'account' | 'builder' | 'notifications' | 'storage' | 'system';
+type Section = 'overview' | 'builder' | 'notifications' | 'storage' | 'system';
 
 export const AppSettingsPage: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { toasts, addToast, removeToast } = useToast();
 
-  const [activeSection, setActiveSection] = useState<Section>('account');
+  const [activeSection, setActiveSection] = useState<Section>('overview');
   const [saving, setSaving] = useState(false);
 
   const [preferences, setPreferences] = useState({
@@ -34,7 +33,6 @@ export const AppSettingsPage: React.FC = () => {
     requireLoginByDefault: false,
   });
 
-  const displayName = profile ? `${profile.first_name} ${profile.last_name}`.trim() || profile.username : 'MEXO User';
   const mailUrl = (import.meta as any).env?.VITE_MEXO_MAIL_URL || 'https://mexo-mail.vercel.app';
 
   const handleSavePreferences = () => {
@@ -56,129 +54,62 @@ export const AppSettingsPage: React.FC = () => {
     }
   };
 
-  const sections: { id: Section; label: string; description: string; icon: React.ReactNode; category: 'MEXO IDENTITY' | 'FORM BUILDER' | 'SYSTEM' }[] = [
-    { id: 'account', label: 'MEXO Account', description: 'Profile & identity', icon: <User className="w-4 h-4" />, category: 'MEXO IDENTITY' },
-    { id: 'builder', label: 'Form Builder', description: 'Autosave & theme defaults', icon: <Sliders className="w-4 h-4" />, category: 'FORM BUILDER' },
-    { id: 'notifications', label: 'Notifications', description: 'Email response alerts', icon: <Bell className="w-4 h-4" />, category: 'FORM BUILDER' },
-    { id: 'storage', label: 'Storage & PWA', description: 'Offline cache & PWA status', icon: <HardDrive className="w-4 h-4" />, category: 'SYSTEM' },
-    { id: 'system', label: 'Ecosystem Info', description: 'Connected apps & architecture', icon: <Info className="w-4 h-4" />, category: 'SYSTEM' },
-  ];
-
-  const categories = ['MEXO IDENTITY', 'FORM BUILDER', 'SYSTEM'] as const;
-
   return (
     <AppShell>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 pb-28 md:pb-12">
+        {/* Header */}
         <div className="mb-6">
           <h1 className="text-xl sm:text-2xl font-extrabold text-app-heading">Settings</h1>
-          <p className="text-xs text-app-muted mt-1">Manage your MEXO Account, form builder defaults, and system preferences.</p>
+          <p className="text-xs sm:text-sm text-app-muted mt-1 font-medium">
+            Manage your MEXO Account, form preferences and application settings.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {/* Navigation Sidebar */}
-          <div className="md:col-span-1 space-y-4">
-            {categories.map(cat => (
-              <div key={cat}>
-                <p className="text-[11px] font-extrabold text-app-muted uppercase tracking-wider px-3 mb-1.5">{cat}</p>
-                <div className="space-y-1">
-                  {sections.filter(s => s.category === cat).map(sec => (
-                    <button
-                      key={sec.id}
-                      id={`setting-nav-${sec.id}`}
-                      onClick={() => setActiveSection(sec.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-xs transition-all text-left ${
-                        activeSection === sec.id
-                          ? 'bg-indigo-50 text-[#7C3AED] font-extrabold shadow-sm'
-                          : 'text-app-body hover:bg-slate-100 font-semibold'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <span className={activeSection === sec.id ? 'text-[#7C3AED]' : 'text-app-muted'}>{sec.icon}</span>
-                        <div className="min-w-0">
-                          <p className="truncate">{sec.label}</p>
-                        </div>
-                      </div>
-                      <ChevronRight className={`w-3.5 h-3.5 flex-shrink-0 ${activeSection === sec.id ? 'text-[#7C3AED]' : 'text-slate-300'}`} />
-                    </button>
-                  ))}
+        <div className="space-y-6">
+          {/* 1. MEXO IDENTITY GROUP */}
+          <div>
+            <p className="text-[11px] font-extrabold text-app-muted uppercase tracking-wider mb-2 px-1">
+              MEXO IDENTITY
+            </p>
+            <div className="bg-white rounded-2xl border border-app-border overflow-hidden shadow-mexo-sm">
+              <button
+                type="button"
+                onClick={() => navigate('/account')}
+                className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-slate-50 active:bg-slate-100 transition-colors min-h-[72px] cursor-pointer"
+              >
+                <div className="flex items-center space-x-3.5 min-w-0">
+                  <div className="p-2.5 rounded-xl bg-purple-50 text-[#7C3AED] border border-purple-100 shrink-0">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-extrabold text-app-heading">MEXO Account</p>
+                    <p className="text-xs text-app-muted mt-0.5 truncate">
+                      Manage name, photo, security and MEXO identity
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
-
-            {/* Quick MEXO Account Card */}
-            <div
-              onClick={() => window.open(mailUrl, '_blank')}
-              className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/80 to-blue-50/80 border border-indigo-100 cursor-pointer hover:border-indigo-300 transition-all group"
-            >
-              <div className="flex items-center gap-2.5 mb-2">
-                <Mail className="w-4 h-4 text-[#7C3AED]" />
-                <span className="text-xs font-bold text-slate-900 flex items-center gap-1">
-                  MEXO Mail <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-[#7C3AED] transition-colors" />
-                </span>
-              </div>
-              <p className="text-[11px] text-app-body leading-tight">Switch to MEXO Mail to manage your primary address, security, and storage limits.</p>
+                <ChevronRight className="w-5 h-5 text-slate-300 shrink-0 ml-2" />
+              </button>
             </div>
           </div>
 
-          {/* Main Content Area */}
-          <div className="md:col-span-3 space-y-6">
-            {/* 1. Account Section */}
-            {activeSection === 'account' && (
-              <div className="bg-white rounded-3xl border border-app-border p-6 shadow-mexo-card space-y-6">
-                <div className="flex items-center justify-between border-b border-app-border pb-4">
-                  <div>
-                    <h2 className="text-base font-extrabold text-app-heading">MEXO Account Profile</h2>
-                    <p className="text-xs text-app-muted mt-0.5">Your central MEXO Ecosystem identity</p>
-                  </div>
-                  <button
-                    onClick={() => navigate('/account')}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-tr from-[#7C3AED] via-[#6366F1] to-[#0878e8] text-white font-extrabold text-xs shadow-xs hover:opacity-95 transition-all cursor-pointer"
-                  >
-                    Open MEXO Account →
-                  </button>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 p-4 rounded-2xl bg-purple-50/50 border border-purple-100">
-                  <div className="flex items-center gap-4">
-                    <MexoAvatar name={displayName} src={profile?.avatar_url} size="xl" className="border-2 border-white shadow-mexo-md" />
-                    <div>
-                      <h3 className="text-base font-extrabold text-app-heading">{displayName}</h3>
-                      <p className="text-xs text-[#7C3AED] font-mono font-semibold mt-0.5">{profile?.primary_address}</p>
-                      <p className="text-[11px] text-app-muted mt-1">Username: <strong>@{profile?.username}</strong></p>
+          {/* 2. FORM BUILDER PREFERENCES */}
+          <div>
+            <p className="text-[11px] font-extrabold text-app-muted uppercase tracking-wider mb-2 px-1">
+              FORM BUILDER
+            </p>
+            <div className="bg-white rounded-2xl border border-app-border overflow-hidden shadow-mexo-sm divide-y divide-app-border">
+              {/* Form Builder Preferences Row */}
+              <div className="p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
+                      <Sliders className="w-4 h-4" />
                     </div>
-                  </div>
-
-                  <MexoButton
-                    id="manage-mexo-account-btn"
-                    variant="primary"
-                    size="sm"
-                    leftIcon={<User className="w-3.5 h-3.5" />}
-                    onClick={() => navigate('/account')}
-                  >
-                    Manage MEXO Account
-                  </MexoButton>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div className="p-4 rounded-2xl border border-app-border cursor-pointer hover:border-[#7C3AED] transition-colors" onClick={() => navigate('/account/personal-info')}>
-                    <p className="text-xs font-bold text-app-heading mb-1">Personal Information</p>
-                    <p className="text-xs text-app-muted">Name, photo, recovery email & personal data →</p>
-                  </div>
-                  <div className="p-4 rounded-2xl border border-app-border cursor-pointer hover:border-[#7C3AED] transition-colors" onClick={() => navigate('/account/security')}>
-                    <p className="text-xs font-bold text-app-heading mb-1">Security & Password</p>
-                    <p className="text-xs text-app-muted">Change password & manage credentials →</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 2. Builder Section */}
-            {activeSection === 'builder' && (
-              <div className="bg-white rounded-3xl border border-app-border p-6 shadow-mexo-card space-y-6">
-                <div className="flex items-center justify-between border-b border-app-border pb-4">
-                  <div>
-                    <h2 className="text-base font-extrabold text-app-heading">Form Builder Defaults</h2>
-                    <p className="text-xs text-app-muted mt-0.5">Configure default behavior for new forms</p>
+                    <div>
+                      <p className="text-sm font-extrabold text-app-heading">Form Builder Defaults</p>
+                      <p className="text-xs text-app-muted mt-0.5">Autosave delay, confirmation message & themes</p>
+                    </div>
                   </div>
                   <MexoButton
                     id="save-builder-prefs"
@@ -188,13 +119,13 @@ export const AppSettingsPage: React.FC = () => {
                     onClick={handleSavePreferences}
                     loading={saving}
                   >
-                    Save Preferences
+                    Save
                   </MexoButton>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-4 pt-2">
                   <div>
-                    <label className="block text-xs font-semibold text-app-heading mb-1.5">Default Confirmation Message</label>
+                    <label className="block text-xs font-bold text-app-heading mb-1.5">Default Confirmation Message</label>
                     <MexoInput
                       value={preferences.defaultConfirmationMsg}
                       onChange={e => setPreferences(p => ({ ...p, defaultConfirmationMsg: e.target.value }))}
@@ -204,11 +135,11 @@ export const AppSettingsPage: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-app-heading mb-1.5">Autosave Delay</label>
+                      <label className="block text-xs font-bold text-app-heading mb-1.5">Autosave Delay</label>
                       <select
                         value={preferences.autosaveDelay}
                         onChange={e => setPreferences(p => ({ ...p, autosaveDelay: e.target.value }))}
-                        className="w-full rounded-xl border border-app-border px-3 py-2.5 text-xs font-semibold text-app-heading outline-none bg-white focus:border-[#7C3AED]"
+                        className="w-full rounded-xl border border-app-border px-3 py-2.5 text-xs font-bold text-app-heading outline-none bg-white focus:border-[#7C3AED]"
                       >
                         <option value="500">500 ms (Fast)</option>
                         <option value="800">800 ms (Recommended)</option>
@@ -217,11 +148,11 @@ export const AppSettingsPage: React.FC = () => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold text-app-heading mb-1.5">Default Color Theme</label>
+                      <label className="block text-xs font-bold text-app-heading mb-1.5">Default Color Theme</label>
                       <select
                         value={preferences.themeAccent}
                         onChange={e => setPreferences(p => ({ ...p, themeAccent: e.target.value }))}
-                        className="w-full rounded-xl border border-app-border px-3 py-2.5 text-xs font-semibold text-app-heading outline-none bg-white focus:border-[#7C3AED]"
+                        className="w-full rounded-xl border border-app-border px-3 py-2.5 text-xs font-bold text-app-heading outline-none bg-white focus:border-[#7C3AED]"
                       >
                         <option value="purple">MEXO Purple / Blue Gradient</option>
                         <option value="emerald">Emerald Green</option>
@@ -233,7 +164,7 @@ export const AppSettingsPage: React.FC = () => {
                   <div className="border-t border-app-border pt-4 space-y-4">
                     <div className="flex items-center justify-between gap-4">
                       <div>
-                        <p className="text-xs font-semibold text-app-heading">Require login by default</p>
+                        <p className="text-xs font-bold text-app-heading">Require login by default</p>
                         <p className="text-[11px] text-app-muted mt-0.5">New forms require respondents to log in with MEXO</p>
                       </div>
                       <MexoToggle
@@ -245,7 +176,7 @@ export const AppSettingsPage: React.FC = () => {
 
                     <div className="flex items-center justify-between gap-4">
                       <div>
-                        <p className="text-xs font-semibold text-app-heading">Show "Powered by MEXO Forms" footer</p>
+                        <p className="text-xs font-bold text-app-heading">Show "Powered by MEXO Forms" footer</p>
                         <p className="text-[11px] text-app-muted mt-0.5">Display branding badge on public form pages</p>
                       </div>
                       <MexoToggle
@@ -257,116 +188,103 @@ export const AppSettingsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-            )}
 
-            {/* 3. Notifications Section */}
-            {activeSection === 'notifications' && (
-              <div className="bg-white rounded-3xl border border-app-border p-6 shadow-mexo-card space-y-6">
-                <div className="flex items-center justify-between border-b border-app-border pb-4">
-                  <div>
-                    <h2 className="text-base font-extrabold text-app-heading">Response Alerts & Notifications</h2>
-                    <p className="text-xs text-app-muted mt-0.5">Manage email notifications when forms are submitted</p>
+              {/* Notifications Row */}
+              <div className="p-5 flex items-center justify-between gap-4">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 rounded-xl bg-amber-50 text-amber-600 border border-amber-100 shrink-0">
+                    <Bell className="w-4 h-4" />
                   </div>
+                  <div>
+                    <p className="text-sm font-extrabold text-app-heading">Email Notifications</p>
+                    <p className="text-xs text-app-muted mt-0.5">Receive email alerts on new submissions to {profile?.primary_address}</p>
+                  </div>
+                </div>
+                <MexoToggle
+                  id="notif-email-toggle"
+                  checked={preferences.emailNotifications}
+                  onCheckedChange={v => setPreferences(p => ({ ...p, emailNotifications: v }))}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 3. SYSTEM GROUP */}
+          <div>
+            <p className="text-[11px] font-extrabold text-app-muted uppercase tracking-wider mb-2 px-1">
+              SYSTEM & PWA
+            </p>
+            <div className="bg-white rounded-2xl border border-app-border overflow-hidden shadow-mexo-sm p-5 space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl bg-slate-50 border border-app-border space-y-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    <h3 className="text-xs font-extrabold text-app-heading">PWA Mobile Application</h3>
+                  </div>
+                  <p className="text-xs text-app-muted leading-relaxed">
+                    Install MEXO Forms as an offline-ready Progressive Web App on mobile and desktop.
+                  </p>
+                  <PWAInstallButton variant="primary" size="sm" />
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-50 border border-app-border space-y-3">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="w-4 h-4 text-[#7C3AED]" />
+                    <h3 className="text-xs font-extrabold text-app-heading">Offline App Shell Cache</h3>
+                  </div>
+                  <p className="text-xs text-app-muted leading-relaxed">
+                    Static application templates and assets are cached for offline responsiveness.
+                  </p>
                   <MexoButton
-                    id="save-notif-prefs"
-                    variant="primary"
+                    id="clear-cache-btn"
+                    variant="secondary"
                     size="sm"
-                    leftIcon={<Save className="w-3.5 h-3.5" />}
-                    onClick={handleSavePreferences}
-                    loading={saving}
+                    leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                    onClick={handleClearCache}
                   >
-                    Save Preferences
+                    Clear Cache
                   </MexoButton>
                 </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                    <div>
-                      <p className="text-xs font-bold text-app-heading">Email notifications for new responses</p>
-                      <p className="text-[11px] text-app-muted mt-0.5">Sends instant alert to <strong>{profile?.primary_address}</strong> on new submissions</p>
-                    </div>
-                    <MexoToggle
-                      id="notif-email-toggle"
-                      checked={preferences.emailNotifications}
-                      onCheckedChange={v => setPreferences(p => ({ ...p, emailNotifications: v }))}
-                    />
-                  </div>
-                </div>
               </div>
-            )}
 
-            {/* 4. Storage & PWA Section */}
-            {activeSection === 'storage' && (
-              <div className="bg-white rounded-3xl border border-app-border p-6 shadow-mexo-card space-y-6">
-                <div className="border-b border-app-border pb-4">
-                  <h2 className="text-base font-extrabold text-app-heading">Storage & PWA</h2>
-                  <p className="text-xs text-app-muted mt-0.5">Manage offline cache and Progressive Web App features</p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="p-5 rounded-2xl bg-slate-50 border border-app-border space-y-3">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                      <h3 className="text-xs font-extrabold text-app-heading">PWA Application</h3>
-                    </div>
-                    <p className="text-xs text-app-muted leading-relaxed">
-                      MEXO Forms is PWA-enabled. You can install it on your device for standalone desktop and mobile experience.
-                    </p>
-                    <PWAInstallButton variant="primary" size="sm" />
-                  </div>
-
-                  <div className="p-5 rounded-2xl bg-slate-50 border border-app-border space-y-3">
-                    <div className="flex items-center gap-2">
-                      <HardDrive className="w-5 h-5 text-[#7C3AED]" />
-                      <h3 className="text-xs font-extrabold text-app-heading">Offline App Shell Cache</h3>
-                    </div>
-                    <p className="text-xs text-app-muted leading-relaxed">
-                      Static assets and layout templates are cached for fast offline loading.
-                    </p>
-                    <MexoButton
-                      id="clear-cache-btn"
-                      variant="secondary"
-                      size="sm"
-                      leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
-                      onClick={handleClearCache}
-                    >
-                      Clear Cache
-                    </MexoButton>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 5. System Info Section */}
-            {activeSection === 'system' && (
-              <div className="bg-white rounded-3xl border border-app-border p-6 shadow-mexo-card space-y-6">
-                <div className="border-b border-app-border pb-4">
-                  <h2 className="text-base font-extrabold text-app-heading">Ecosystem Architecture</h2>
-                  <p className="text-xs text-app-muted mt-0.5">MEXO ecosystem integration details</p>
-                </div>
-
-                <div className="space-y-3 text-xs text-app-body">
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                    <span className="font-semibold text-app-muted">Application</span>
+              {/* Ecosystem Architecture */}
+              <div className="border-t border-app-border pt-4">
+                <p className="text-xs font-extrabold text-app-heading mb-3 flex items-center gap-2">
+                  <Info className="w-4 h-4 text-[#7C3AED]" /> Ecosystem Info
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                    <span className="font-semibold text-app-muted">App Version</span>
                     <span className="font-extrabold text-app-heading">MEXO Forms v1.0.0</span>
                   </div>
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                    <span className="font-semibold text-app-muted">Supabase Project</span>
-                    <span className="font-mono text-app-heading font-bold">vnbixduiwsvepvtybygy.supabase.co</span>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                    <span className="font-semibold text-app-muted">Shared Profile Table</span>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                    <span className="font-semibold text-app-muted">Shared Identity</span>
                     <span className="font-mono text-emerald-600 font-bold">public.profiles ✓</span>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                    <span className="font-semibold text-app-muted">MEXO Mail URL</span>
-                    <a href={mailUrl} target="_blank" rel="noopener noreferrer" className="font-mono text-[#7C3AED] font-bold hover:underline flex items-center gap-1">
-                      {mailUrl} <ExternalLink className="w-3 h-3" />
-                    </a>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+          </div>
+
+          {/* 4. MEXO MAIL ECOSYSTEM CARD */}
+          <div
+            onClick={() => window.open(mailUrl, '_blank')}
+            className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50/90 via-purple-50/80 to-blue-50/90 border border-indigo-100 cursor-pointer hover:border-indigo-300 transition-all group shadow-2xs"
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2 rounded-xl bg-white text-[#7C3AED] shadow-2xs">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <span className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+                  MEXO Mail <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#7C3AED] transition-colors" />
+                </span>
+              </div>
+              <span className="text-xs font-extrabold text-[#7C3AED] underline">Open App ↗</span>
+            </div>
+            <p className="text-xs text-app-body leading-relaxed">
+              Manage mail-specific preferences, storage limits, and primary address settings directly in MEXO Mail.
+            </p>
           </div>
         </div>
       </div>

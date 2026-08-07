@@ -33,7 +33,7 @@ export const ACCOUNT_ITEMS: AccountItem[] = [
     id: 'personal',
     label: 'Personal info',
     description: 'Name, photo and personal data',
-    path: '/account/personal-info',
+    path: '/account/personal',
     icon: <User className="w-5 h-5" />,
   },
   {
@@ -60,8 +60,8 @@ export const ACCOUNT_ITEMS: AccountItem[] = [
   {
     id: 'apps',
     label: 'Connected MEXO Apps',
-    description: 'Apps connected to your account',
-    path: '/account/connected-apps',
+    description: 'Apps connected to account',
+    path: '/account/apps',
     icon: <Grid className="w-5 h-5" />,
   },
   {
@@ -74,7 +74,7 @@ export const ACCOUNT_ITEMS: AccountItem[] = [
   {
     id: 'storage',
     label: 'Data & Storage',
-    description: 'Storage usage and your data',
+    description: 'Storage usage and data',
     path: '/account/storage',
     icon: <HardDrive className="w-5 h-5" />,
   },
@@ -83,17 +83,18 @@ export const ACCOUNT_ITEMS: AccountItem[] = [
 export const AccountNavigation: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const currentPath = location.pathname.toLowerCase();
 
   return (
     <nav className="space-y-1">
       {ACCOUNT_ITEMS.map((item) => {
-        const isActive = location.pathname.startsWith(item.path);
+        const isActive = currentPath.includes(item.id) || currentPath.startsWith(item.path);
         return (
           <button
             key={item.id}
             type="button"
             onClick={() => navigate(item.path)}
-            className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-left ${
+            className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-semibold transition-all text-left cursor-pointer ${
               isActive
                 ? 'bg-purple-50 text-[#7C3AED] font-extrabold border border-purple-100'
                 : 'text-app-body hover:bg-slate-100'

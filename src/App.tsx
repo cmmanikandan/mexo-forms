@@ -136,6 +136,8 @@ export const App: React.FC = () => {
           <Route path="/templates" element={<ProtectedRoute><TemplatesPage /></ProtectedRoute>} />
           <Route path="/trash" element={<ProtectedRoute><TrashPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><AppSettingsPage /></ProtectedRoute>} />
+          <Route path="/settings/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+          <Route path="/settings/account/*" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
           <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
           <Route path="/account/*" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
 
