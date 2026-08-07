@@ -42,6 +42,18 @@ export const FormSettingsPage: React.FC = () => {
     submission_attachment_name: '',
   });
 
+  const formatDatetimeLocal = (isoStr?: string | null): string => {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return isoStr.replace(' ', 'T').slice(0, 16);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hours = String(d.getHours()).padStart(2, '0');
+    const mins = String(d.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${mins}`;
+  };
+
   useEffect(() => {
     if (!id) return;
     formService.getForm(id).then(f => {
@@ -60,8 +72,8 @@ export const FormSettingsPage: React.FC = () => {
           show_progress_bar: f.show_progress_bar ?? true,
           shuffle_questions: f.shuffle_questions ?? false,
           time_limit_minutes: f.time_limit_minutes ?? 0,
-          starts_at: f.starts_at ? f.starts_at.slice(0, 16) : '',
-          ends_at: f.ends_at ? f.ends_at.slice(0, 16) : '',
+          starts_at: formatDatetimeLocal(f.starts_at),
+          ends_at: formatDatetimeLocal(f.ends_at),
           attachment_url: f.attachment_url || '',
           attachment_name: f.attachment_name || '',
           submission_attachment_url: f.submission_attachment_url || '',
@@ -76,7 +88,15 @@ export const FormSettingsPage: React.FC = () => {
     if (!id) return;
     setSaving(true);
     setSaved(false);
-    const updated = await formService.updateForm(id, formData);
+
+    const payload = {
+      ...formData,
+      time_limit_minutes: Number(formData.time_limit_minutes) || 0,
+      starts_at: formData.starts_at ? new Date(formData.starts_at).toISOString() : null,
+      ends_at: formData.ends_at ? new Date(formData.ends_at).toISOString() : null,
+    };
+
+    const updated = await formService.updateForm(id, payload as any);
     setSaving(false);
     if (updated) {
       setForm(updated);

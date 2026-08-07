@@ -7,7 +7,7 @@ import { formService } from '../../services/formService';
 import { Form } from '../../types/forms';
 import {
   MessageSquare, Users, Zap, ClipboardCheck, User,
-  HelpCircle, Layout, ArrowRight, Star,
+  HelpCircle, Layout, ArrowRight, Star, Briefcase, GraduationCap, Wrench, Code,
 } from 'lucide-react';
 
 interface TemplateItem {
@@ -62,6 +62,63 @@ const TEMPLATES: TemplateItem[] = [
     ],
   },
   {
+    id: 'web_quiz',
+    name: 'Web Development Quiz',
+    category: 'Quiz',
+    description: 'Assessment quiz covering HTML, CSS, JavaScript, and React.',
+    icon: <Code className="w-5 h-5" />,
+    color: 'from-purple-600 to-indigo-600',
+    questions: [
+      { text: 'Student Name / Email', type: 'short_text' },
+      { text: '1. Which HTML tag is used for the main heading?', type: 'multiple_choice', options: ['<h1>', '<head>', '<header>', '<heading>'] },
+      { text: '2. What does CSS stand for?', type: 'multiple_choice', options: ['Cascading Style Sheets', 'Computer Style System', 'Creative Sheet Style', 'Colorful Style Sheets'] },
+      { text: '3. Which JS keyword declares a block-scoped variable?', type: 'multiple_choice', options: ['var', 'let', 'global', 'const'] },
+    ],
+  },
+  {
+    id: 'job_app',
+    name: 'Job Application & HR Intake',
+    category: 'HR',
+    description: 'Collect applicant details, resume attachments, and experience.',
+    icon: <Briefcase className="w-5 h-5" />,
+    color: 'from-sky-500 to-[#0878e8]',
+    questions: [
+      { text: 'Full Name', type: 'short_text' },
+      { text: 'Email Address', type: 'email' },
+      { text: 'Position Applied For', type: 'dropdown', options: ['Frontend Developer', 'Backend Developer', 'UI/UX Designer', 'Product Manager'] },
+      { text: 'Years of Experience', type: 'number' },
+      { text: 'Portfolio / LinkedIn URL', type: 'short_text' },
+    ],
+  },
+  {
+    id: 'course_eval',
+    name: 'Course & Teacher Evaluation',
+    category: 'Education',
+    description: 'Gather student feedback on course materials, teaching, and clarity.',
+    icon: <GraduationCap className="w-5 h-5" />,
+    color: 'from-teal-500 to-emerald-600',
+    questions: [
+      { text: 'Course Name', type: 'short_text' },
+      { text: 'Instructor Clarity & Preparation', type: 'rating' },
+      { text: 'Was the pace of the course appropriate?', type: 'yes_no' },
+      { text: 'What did you like most about this course?', type: 'long_text' },
+    ],
+  },
+  {
+    id: 'it_ticket',
+    name: 'IT Support Ticket & Issue Report',
+    category: 'IT Support',
+    description: 'Log technical issues, priority level, and system details.',
+    icon: <Wrench className="w-5 h-5" />,
+    color: 'from-slate-600 to-slate-800',
+    questions: [
+      { text: 'User Name / Department', type: 'short_text' },
+      { text: 'Issue Category', type: 'dropdown', options: ['Hardware', 'Software', 'Network / Wi-Fi', 'Account Access'] },
+      { text: 'Priority Level', type: 'multiple_choice', options: ['Low', 'Medium', 'High', 'Critical'] },
+      { text: 'Detailed Issue Description', type: 'long_text' },
+    ],
+  },
+  {
     id: 'survey',
     name: 'Product Research Survey',
     category: 'Survey',
@@ -107,7 +164,7 @@ export const TemplatesPage: React.FC = () => {
   const [creating, setCreating] = useState<string | null>(null);
   const [selectedCat, setSelectedCat] = useState<string>('All');
 
-  const categories = ['All', 'Feedback', 'Registration', 'Quiz', 'Survey', 'Contact', 'Poll'];
+  const categories = ['All', 'Feedback', 'Registration', 'Quiz', 'HR', 'Education', 'IT Support', 'Survey', 'Contact', 'Poll'];
 
   const handleUseTemplate = async (tmpl: TemplateItem) => {
     if (!profile) return;
