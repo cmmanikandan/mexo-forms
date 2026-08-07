@@ -166,7 +166,6 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
   };
 
   const handleAutoSubmit = async () => {
-    alert('Time is up! Your responses are being automatically submitted.');
     const payload = questions.filter(q => q.question_type !== 'page_break' && isQuestionVisible(q)).map(q => {
       const ans = answers[q.id];
       const isJson = Array.isArray(ans) || (typeof ans === 'object' && ans !== null);

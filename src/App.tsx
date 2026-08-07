@@ -64,7 +64,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
-// Route wrapper for Sign In page: if already authenticated, go straight to account (/home)
+// Route wrapper for Sign In page: if already authenticated, go to redirect target or /home
 const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -73,7 +73,9 @@ const AuthRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/home" replace />;
+    const searchParams = new URLSearchParams(window.location.search);
+    const redirectTarget = searchParams.get('redirect');
+    return <Navigate to={redirectTarget || '/home'} replace />;
   }
 
   return <>{children}</>;

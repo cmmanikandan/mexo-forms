@@ -253,16 +253,14 @@ export const FormSettingsPage: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4 p-3 rounded-xl bg-purple-50/60 border border-purple-100">
               <div>
-                <p className="text-xs font-semibold text-app-heading">Require MEXO Account login</p>
-                <p className="text-[11px] text-app-muted mt-0.5">Respondents must sign in to MEXO to submit</p>
+                <p className="text-xs font-bold text-app-heading flex items-center gap-1.5">
+                  MEXO Account Authentication
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-[#7C3AED]">✓ Required</span>
+                </p>
+                <p className="text-[11px] text-app-muted mt-0.5">Respondents sign in with their MEXO Account before submitting</p>
               </div>
-              <MexoToggle
-                id="setting-requires-login"
-                checked={formData.requires_login}
-                onCheckedChange={v => setFormData(s => ({ ...s, requires_login: v }))}
-              />
             </div>
           </div>
         </div>

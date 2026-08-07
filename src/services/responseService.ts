@@ -13,28 +13,69 @@ export const responseService = {
       const now = new Date();
       const submittedAt = now.toISOString();
       const startedAt = startedAtISO || submittedAt;
-      const durationSeconds = Math.max(1, Math.round((now.getTime() - new Date(startedAt).getTime()) / 1000));
+      const durationSeconds = Math.max(0, Math.round((now.getTime() - new Date(startedAt).getTime()) / 1000));
 
       const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
       const deviceType = /mobile/i.test(ua) ? 'Mobile' : /ipad|tablet/i.test(ua) ? 'Tablet' : 'Desktop';
 
-      const { data: response, error: respError } = await supabase
+      // 1. Try atomic PostgreSQL RPC submit_form_response
+      const { data: rpcData, error: rpcError } = await supabase.rpc('submit_form_response', {
+        p_form_id: formId,
+        p_answers: answers,
+        p_started_at: startedAt,
+        p_completion_time_seconds: durationSeconds,
+        p_device_type: deviceType,
+      });
+
+      if (!rpcError && rpcData) {
+        return { success: true, responseId: rpcData as string };
+      }
+
+      // If RPC returned a specific business logic / validation error, return it
+      if (rpcError && rpcError.message && !rpcError.message.includes('function') && !rpcError.message.includes('schema cache')) {
+        return { success: false, error: rpcError.message };
+      }
+
+      // 2. Direct insert fallback (if RPC is not applied yet in DB)
+      const insertPayload: any = {
+        form_id: formId,
+        respondent_id: respondentId || null,
+        respondent_email: respondentEmail || null,
+        status: 'submitted',
+        device_type: deviceType,
+        completion_time_seconds: durationSeconds,
+        started_at: startedAt,
+        submitted_at: submittedAt,
+      };
+
+      let response: any = null;
+      let respError: any = null;
+
+      // First attempt with full columns
+      const firstAttempt = await supabase
         .from('form_responses')
-        .insert({
-          form_id: formId,
-          respondent_id: respondentId || null,
-          respondent_email: respondentEmail || null,
-          status: 'submitted',
-          device_type: deviceType,
-          completion_time_seconds: durationSeconds,
-          started_at: startedAt,
-          submitted_at: submittedAt,
-        })
+        .insert(insertPayload)
         .select('*')
         .single();
 
+      response = firstAttempt.data;
+      respError = firstAttempt.error;
+
+      // If error mentions completion_time_seconds or device_type column missing, retry without them
+      if (respError && respError.message && (respError.message.includes('completion_time_seconds') || respError.message.includes('device_type'))) {
+        delete insertPayload.completion_time_seconds;
+        delete insertPayload.device_type;
+        const retryAttempt = await supabase
+          .from('form_responses')
+          .insert(insertPayload)
+          .select('*')
+          .single();
+        response = retryAttempt.data;
+        respError = retryAttempt.error;
+      }
+
       if (respError || !response) {
-        return { success: false, error: respError?.message || 'Failed to submit response' };
+        return { success: false, error: respError?.message || 'We couldn\'t submit your response. Please try again.' };
       }
 
       const responseId = (response as FormResponse).id;
@@ -49,13 +90,14 @@ export const responseService = {
         }));
         const { error: answerError } = await supabase.from('form_answers').insert(answerRows);
         if (answerError) {
-          console.error('Answer insert error:', answerError);
+          console.error('[SUBMIT] Answer insert warning:', answerError);
         }
       }
 
       return { success: true, responseId };
     } catch (err: any) {
-      return { success: false, error: err?.message || 'Submission failed' };
+      console.error('[SUBMIT] Submission exception:', err);
+      return { success: false, error: 'We couldn\'t submit your response. Please try again.' };
     }
   },
 
@@ -63,13 +105,19 @@ export const responseService = {
     if (typeof localStorage !== 'undefined' && localStorage.getItem(`mexo_submitted_${formId}`)) {
       return true;
     }
-    if (!respondentId && !respondentEmail) return false;
+    
+    // Resolve authenticated UID if available
+    const { data: sessionData } = await supabase.auth.getSession();
+    const currentUid = respondentId || sessionData?.session?.user?.id;
+    const currentEmail = respondentEmail || sessionData?.session?.user?.email;
+
+    if (!currentUid && !currentEmail) return false;
 
     let query = supabase.from('form_responses').select('id').eq('form_id', formId).eq('status', 'submitted');
-    if (respondentId) {
-      query = query.eq('respondent_id', respondentId);
-    } else if (respondentEmail) {
-      query = query.eq('respondent_email', respondentEmail);
+    if (currentUid) {
+      query = query.eq('respondent_id', currentUid);
+    } else if (currentEmail) {
+      query = query.eq('respondent_email', currentEmail);
     }
     const { data } = await query;
     return !!(data && data.length > 0);

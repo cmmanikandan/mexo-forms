@@ -34,11 +34,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     let mounted = true;
 
+    const resolveProfile = async (sessionUser: any): Promise<MexoProfile> => {
+      const dbProfile = await profileService.getProfileById(sessionUser.id);
+      if (dbProfile) return dbProfile;
+
+      const email = sessionUser.email || '';
+      const username = email.includes('@') ? email.split('@')[0] : email || 'user';
+      const nameParts = (sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || username).split(' ');
+      return {
+        id: sessionUser.id,
+        username,
+        primary_address: email,
+        first_name: nameParts[0] || username,
+        last_name: nameParts.slice(1).join(' ') || '',
+        avatar_url: sessionUser.user_metadata?.avatar_url,
+        role: 'user',
+        status: 'active',
+        created_at: sessionUser.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+    };
+
     const initialize = async () => {
       try {
         const session = await authService.getSession();
         if (session?.user && mounted) {
-          const p = await profileService.getProfileById(session.user.id);
+          const p = await resolveProfile(session.user);
           if (p && mounted) {
             setProfile(p);
             setIsAuthenticated(true);
@@ -81,7 +102,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           /* ignore */
         }
       } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        const p = await profileService.getProfileById(session.user.id);
+        const p = await resolveProfile(session.user);
         if (p && mounted) {
           setProfile(p);
           setIsAuthenticated(true);

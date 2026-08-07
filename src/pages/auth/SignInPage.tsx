@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { MexoButton } from '../../components/common/MexoButton';
 import { MexoInput } from '../../components/common/MexoInput';
@@ -12,6 +12,10 @@ export const SignInPage: React.FC = () => {
   useDocumentTitle('Sign In — MEXO Forms');
   const { signIn, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTarget = searchParams.get('redirect') || (location.state as any)?.from;
 
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -30,7 +34,7 @@ export const SignInPage: React.FC = () => {
     const result = await signIn(emailOrUsername, password);
     setLoading(false);
     if (result.success) {
-      navigate('/home', { replace: true });
+      navigate(redirectTarget || '/home', { replace: true });
     } else {
       setError(result.error || 'Sign in failed. Please check your credentials.');
     }
