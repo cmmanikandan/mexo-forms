@@ -2,18 +2,21 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { formService } from '../../services/formService';
 import { responseService } from '../../services/responseService';
+import { draftService } from '../../services/draftService';
+import { useDraftAutosave } from '../../hooks/useDraftAutosave';
 import { useAuth } from '../../contexts/AuthContext';
 import { Form, FormQuestion } from '../../types/forms';
 import { PublicFormRenderer } from '../../components/public/PublicFormRenderer';
 import { FormActionsMenu } from '../../components/public/FormActionsMenu';
 import { AboutMexoFormsModal } from '../../components/public/AboutMexoFormsModal';
+import { DraftSaveIndicator } from '../../components/public/DraftSaveIndicator';
 import { MexoSkeleton } from '../../components/common/MexoSkeleton';
 import { MexoModal } from '../../components/common/MexoModal';
 import { getFormAvailability } from '../../utils/formLifecycle';
 import {
   CheckCircle2, AlertCircle, XCircle, Award, Eye, Lock, LogIn, RefreshCw,
   Download, LogOut, ExternalLink, ShieldCheck, UserCheck, AlertTriangle,
-  Calendar, MapPin, Ticket, Mail, Clock, Users, X, ArrowLeft,
+  Calendar, MapPin, Ticket, Mail, Clock, Users, ArrowLeft, GitMerge,
 } from 'lucide-react';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
@@ -72,6 +75,7 @@ export const PublicFormPage: React.FC = () => {
   useDocumentTitle(form?.title || 'Form');
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [draftSource, setDraftSource] = useState<'supabase' | 'local' | 'none'>('none');
   const [error, setError] = useState<string | null>(null);
   const [alreadyResponded, setAlreadyResponded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -85,10 +89,25 @@ export const PublicFormPage: React.FC = () => {
   const [profileCardOpen, setProfileCardOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
 
-  // Live answers tracking for unsaved-answers protection & menu
+  // Live answers + current page tracking for autosave
   const [currentAnswers, setCurrentAnswers] = useState<Record<string, any>>({});
+  const [currentPage, setCurrentPage] = useState(0);
   const [restoredAnswers, setRestoredAnswers] = useState<Record<string, any>>({});
+  const [restoredPage, setRestoredPage] = useState(0);
   const [hasDraft, setHasDraft] = useState(false);
+
+  // Autosave hook
+  const {
+    saveStatus,
+    queueSave,
+    forceSave,
+    resolveConflict,
+    conflictServerAnswers,
+  } = useDraftAutosave({
+    formId: form?.id,
+    userId: session?.user?.id,
+    debounceMs: 1000,
+  });
 
   // Leave Confirmation State
   const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
@@ -112,31 +131,35 @@ export const PublicFormPage: React.FC = () => {
       }
       setForm(f);
 
-      // Try to restore draft
-      try {
-        const savedDraftStr = sessionStorage.getItem(`mexo_form_draft_${f.id}`);
-        if (savedDraftStr) {
-          const parsed = JSON.parse(savedDraftStr);
-          if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-            setRestoredAnswers(parsed);
-            setCurrentAnswers(parsed);
-            setHasDraft(true);
-          }
-        }
-      } catch (e) {}
-
       if (!isAuthenticated || !session?.user?.id || !profile) {
         setLoading(false);
         return;
       }
 
+      // Check if already submitted (idempotency guard on refresh)
       if (f.one_response_per_user) {
-        const hasResponded = await responseService.hasUserResponded(f.id, session.user.id, profile.primary_address);
-        if (hasResponded) {
-          setAlreadyResponded(true);
-          setLoading(false);
-          return;
+        const submittedId = localStorage.getItem(`mexo_submitted_${f.id}`);
+        if (submittedId) {
+          const hasResponded = await responseService.hasUserResponded(f.id, session.user.id, profile.primary_address);
+          if (hasResponded) {
+            setAlreadyResponded(true);
+            // Clean up any stale draft
+            draftService.removeLocal(f.id, session.user.id);
+            draftService.removeLegacySession(f.id);
+            setLoading(false);
+            return;
+          }
         }
+      }
+
+      // Load best draft: Supabase > local > sessionStorage (legacy)
+      const { draft, source } = await draftService.loadBestDraft(f.id, session.user.id);
+      if (draft && Object.keys(draft.answers || {}).length > 0) {
+        setRestoredAnswers(draft.answers);
+        setCurrentAnswers(draft.answers);
+        setRestoredPage(draft.currentPage || 0);
+        setHasDraft(true);
+        setDraftSource(source);
       }
 
       const q = await formService.getQuestions(f.id);
@@ -165,28 +188,31 @@ export const PublicFormPage: React.FC = () => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [currentAnswers, submitted, navigate, location.pathname]);
 
-  const handleAnswerChange = useCallback((answersMap: Record<string, any>) => {
+  const handleAnswerChange = useCallback((answersMap: Record<string, any>, page?: number) => {
     setCurrentAnswers(answersMap);
-    if (!form?.id) return;
-    try {
-      sessionStorage.setItem(`mexo_form_draft_${form.id}`, JSON.stringify(answersMap));
-    } catch (e) {}
-  }, [form?.id]);
+    const pageNum = page ?? currentPage;
+    setCurrentPage(pageNum);
+    // Queue debounced autosave (local + Supabase)
+    const totalNonPage = questions.filter(q => q.question_type !== 'page_break').length;
+    queueSave(answersMap, pageNum, totalNonPage);
+  }, [currentPage, questions, queueSave]);
 
   const handleClearAnswers = useCallback(() => {
     setCurrentAnswers({});
     setRestoredAnswers({});
-    if (form?.id) {
-      try { sessionStorage.removeItem(`mexo_form_draft_${form.id}`); } catch (e) {}
+    setRestoredPage(0);
+    if (form?.id && session?.user?.id) {
+      draftService.removeLocal(form.id, session.user.id);
+      draftService.removeLegacySession(form.id);
+      draftService.deleteDraft(form.id);
     }
-  }, [form?.id]);
+  }, [form?.id, session?.user?.id]);
 
   const handleSaveProgress = useCallback(() => {
-    if (!form?.id) return;
-    try {
-      sessionStorage.setItem(`mexo_form_draft_${form.id}`, JSON.stringify(currentAnswers));
-    } catch (e) {}
-  }, [form?.id, currentAnswers]);
+    if (!form?.id || !session?.user?.id) return;
+    const totalNonPage = questions.filter(q => q.question_type !== 'page_break').length;
+    forceSave(currentAnswers, currentPage, totalNonPage);
+  }, [form?.id, session?.user?.id, currentAnswers, currentPage, questions, forceSave]);
 
   const handleSignInRedirect = () => {
     const returnTo = location.pathname + location.search + location.hash;
@@ -246,6 +272,10 @@ export const PublicFormPage: React.FC = () => {
     setSubmitting(true);
     setSubmissionError(null);
 
+    // Step 1: Force-save latest answers before submitting
+    const totalNonPage = questions.filter(q => q.question_type !== 'page_break').length;
+    await forceSave(currentAnswers, currentPage, totalNonPage);
+
     const regRef = generateRegRef(form.registration_prefix || 'MXF');
 
     try {
@@ -261,13 +291,19 @@ export const PublicFormPage: React.FC = () => {
         setSubmittedPayload(answers);
         setRegistrationRef(regRef);
         setSubmittedAt(new Date());
+        // Step 2: Cleanup draft & local backup
         try {
           localStorage.setItem(`mexo_submitted_${form.id}`, result.responseId || 'true');
-          sessionStorage.removeItem(`mexo_form_draft_${form.id}`);
         } catch (e) {}
+        if (session?.user?.id) {
+          draftService.removeLocal(form.id, session.user.id);
+          draftService.removeLegacySession(form.id);
+          // DB draft is deleted by submit_form_response RPC automatically
+        }
         setCurrentAnswers({});
         setSubmitted(true);
       } else {
+        // Draft is kept safe — user can retry
         setSubmissionError(result.error || "We couldn't submit your response. Please try again.");
       }
     } catch (err: any) {
@@ -341,6 +377,9 @@ export const PublicFormPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <MexoSkeleton className="h-6 w-36 rounded-xl" />
             <MexoSkeleton className="h-8 w-8 rounded-full" />
+          </div>
+          <div className="flex items-center justify-between text-xs text-app-muted font-semibold">
+            <span>Loading your response...</span>
           </div>
           <MexoSkeleton className="h-8 w-64 mb-4 rounded-xl" />
           {[...Array(4)].map((_, i) => <MexoSkeleton key={i} className="h-20 w-full rounded-2xl" />)}
@@ -870,7 +909,7 @@ export const PublicFormPage: React.FC = () => {
           </div>
         )}
 
-        {/* Form Renderer — passes three-dot menu into form header via slot */}
+        {/* Form Renderer — passes three-dot menu and save indicator into form header via slot */}
         <PublicFormRenderer
           form={form}
           questions={questions}
@@ -879,18 +918,61 @@ export const PublicFormPage: React.FC = () => {
           onSubmit={handleSubmit}
           submitting={submitting}
           headerSlot={
-            <FormActionsMenu
-              form={form}
-              answersCount={answeredCount}
-              totalQuestionsCount={questions.filter(q => q.question_type !== 'page_break').length}
-              onClearAnswers={handleClearAnswers}
-              onSaveProgress={handleSaveProgress}
-            />
+            <div className="flex items-center gap-2">
+              <DraftSaveIndicator status={saveStatus} />
+              <FormActionsMenu
+                form={form}
+                answersCount={answeredCount}
+                totalQuestionsCount={questions.filter(q => q.question_type !== 'page_break').length}
+                onClearAnswers={handleClearAnswers}
+                onSaveProgress={handleSaveProgress}
+              />
+            </div>
           }
         />
 
         <PoweredByFooter onAboutClick={() => setAboutOpen(true)} />
       </div>
+
+      {/* Conflict Resolution Modal */}
+      <MexoModal
+        open={saveStatus === 'conflict' && Boolean(conflictServerAnswers)}
+        onOpenChange={(op) => { if (!op) resolveConflict(false); }}
+        title="Conflict Detected"
+        maxWidth="max-w-xs"
+      >
+        <div className="space-y-4 text-center py-2">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto text-amber-600">
+            <GitMerge className="w-6 h-6" />
+          </div>
+          <div>
+            <h4 className="text-xs font-bold text-app-heading mb-1">Updated on another device</h4>
+            <p className="text-[11px] text-app-body leading-relaxed">
+              This response was updated on another device. Would you like to use the latest version from the server or keep your local changes?
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 pt-1">
+            <button
+              onClick={() => {
+                if (conflictServerAnswers) {
+                  setRestoredAnswers(conflictServerAnswers);
+                  setCurrentAnswers(conflictServerAnswers);
+                  resolveConflict(true, conflictServerAnswers);
+                }
+              }}
+              className="w-full py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#7C3AED] to-[#0878e8] hover:opacity-90 transition-opacity min-h-[44px]"
+            >
+              Use Latest Server Version
+            </button>
+            <button
+              onClick={() => resolveConflict(false)}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold text-app-heading border border-app-border hover:bg-slate-50 transition-colors min-h-[44px]"
+            >
+              Keep My Local Changes
+            </button>
+          </div>
+        </div>
+      </MexoModal>
 
       {/* Leave Confirmation Dialog */}
       <MexoModal open={leaveConfirmOpen} onOpenChange={setLeaveConfirmOpen} title="Leave This Form?" maxWidth="max-w-xs">
