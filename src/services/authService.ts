@@ -3,6 +3,39 @@ import { supabase } from '../lib/supabase';
 import { MexoProfile } from '../types/forms';
 import { profileService } from './profileService';
 
+export function normalizeAuthError(error: any): string {
+  if (!error) return 'Unable to sign in. Please check your credentials and try again.';
+
+  if (typeof error === 'string') {
+    const trimmed = error.trim();
+    if (trimmed === '{}' || trimmed === '[object Object]' || !trimmed) {
+      return 'Unable to sign in. Please check your MEXO ID and password.';
+    }
+    if (trimmed.includes('invalid_grant') || trimmed.toLowerCase().includes('invalid login credentials')) {
+      return 'Incorrect MEXO ID or password.';
+    }
+    return error;
+  }
+
+  if (typeof error === 'object') {
+    const msg = error.message || error.error_description || error.error || error.msg;
+    if (typeof msg === 'string') {
+      const trimmedMsg = msg.trim();
+      if (trimmedMsg && trimmedMsg !== '{}' && trimmedMsg !== '[object Object]') {
+        if (trimmedMsg.toLowerCase().includes('invalid login credentials') || trimmedMsg.includes('invalid_grant')) {
+          return 'Incorrect MEXO ID or password.';
+        }
+        if (trimmedMsg.toLowerCase().includes('email not confirmed')) {
+          return 'Email address is not confirmed.';
+        }
+        return trimmedMsg;
+      }
+    }
+  }
+
+  return 'Unable to sign in. Please check your MEXO ID and password.';
+}
+
 export const authService = {
   /**
    * Resolves input username (e.g. 927624bit060) or email to primary MEXO email address
@@ -26,7 +59,6 @@ export const authService = {
 
   /**
    * Authenticates an existing MEXO Account using Supabase Auth.
-   * NO signup, NO auto-account creation. MEXO Forms only consumes existing accounts.
    */
   async signIn(
     emailOrUsername: string,
@@ -65,25 +97,16 @@ export const authService = {
 
       if (error) {
         if ((import.meta as any).env?.DEV) {
-          console.error('MEXO Forms authentication notice:', {
+          console.error('[AUTH] Sign-in error:', {
             status: error.status,
-            code: (error as any).code,
             message: error.message,
-            name: error.name,
           });
         }
 
         const errStatus = error.status || 0;
         const errMsg = (error.message || '').toLowerCase();
-        const errName = error.name || '';
-        const isServerError =
-          errStatus >= 500 ||
-          errName === 'AuthRetryableFetchError' ||
-          errMsg.includes('database error querying schema') ||
-          errMsg.includes('schema');
-
-        // Step 3: Handle authentication errors cleanly
         const errCode = (((error as any).code) || '').toLowerCase();
+
         if (
           errStatus === 401 ||
           errCode.includes('invalid') ||
@@ -94,21 +117,18 @@ export const authService = {
         } else if (errStatus === 0 || errMsg.includes('fetch') || errMsg.includes('network')) {
           return { session: null, user: null, error: 'Unable to connect to MEXO Account. Check your connection and try again.', status: 0 };
         } else {
-          return { session: null, user: null, error: error.message || 'Unable to sign in. Please try again.', status: errStatus };
+          return { session: null, user: null, error: normalizeAuthError(error), status: errStatus };
         }
       }
 
       if (!data?.session) {
-        return { session: null, user: null, error: 'Unable to sign in. Please try again.' };
+        return { session: null, user: null, error: 'Unable to sign in. Please check your credentials.' };
       }
 
       const userProfile = await profileService.getProfileById(data.session.user.id);
       return { session: data.session, user: userProfile, error: null };
     } catch (err: any) {
-      if ((import.meta as any).env?.DEV) {
-        console.error('MEXO Forms auth exception', { message: err?.message, name: err?.name });
-      }
-      return { session: null, user: null, error: 'Unable to sign in. Please try again.' };
+      return { session: null, user: null, error: normalizeAuthError(err) };
     }
   },
 

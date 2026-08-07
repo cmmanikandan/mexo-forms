@@ -45,7 +45,10 @@ export const SignInPage: React.FC = () => {
 
       navigate(safeTarget, { replace: true });
     } else {
-      setError(result.error || 'Sign in failed. Please check your credentials.');
+      const formatted = result.error && result.error !== '{}' && result.error !== '[object Object]'
+        ? result.error
+        : 'Sign in failed. Please check your MEXO ID and password.';
+      setError(formatted);
     }
   };
 
@@ -77,9 +80,12 @@ export const SignInPage: React.FC = () => {
 
         {/* Error Alert */}
         {error && (
-          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700 flex items-start gap-2.5">
+          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-start gap-2.5 shadow-xs">
             <span className="w-4 h-4 rounded-full bg-rose-200 text-rose-800 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">!</span>
-            <span>{error}</span>
+            <div className="flex-1">
+              <h4 className="text-xs font-extrabold text-rose-950">Unable to sign in</h4>
+              <p className="text-[11px] text-rose-800 font-medium mt-0.5">{error}</p>
+            </div>
           </div>
         )}
 
@@ -103,38 +109,45 @@ export const SignInPage: React.FC = () => {
             <div className="flex items-center justify-between mb-1.5">
               <label className="block text-xs font-bold text-app-heading">Password</label>
             </div>
-            <MexoInput
-              id="signin-password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Enter your password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              leftIcon={<Lock className="w-4 h-4 text-app-muted" />}
-              rightIcon={
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(p => !p)}
-                  className="text-app-muted hover:text-app-heading transition-colors p-1"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              }
-              autoComplete="current-password"
-              className="bg-slate-50/70 border-slate-200 focus:bg-white focus:border-[#7C3AED] focus:ring-4 focus:ring-purple-100 text-app-heading rounded-2xl py-3"
-            />
+            <div className="relative">
+              <MexoInput
+                id="signin-password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                leftIcon={<Lock className="w-4 h-4 text-app-muted" />}
+                autoComplete="current-password"
+                className="bg-slate-50/70 border-slate-200 focus:bg-white focus:border-[#7C3AED] focus:ring-4 focus:ring-purple-100 text-app-heading rounded-2xl py-3 pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-app-muted hover:text-app-heading transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
-          <MexoButton
+          <button
+            id="signin-submit-btn"
             type="submit"
-            variant="primary"
-            size="lg"
-            loading={loading || isLoading}
-            rightIcon={!(loading || isLoading) ? <ArrowRight className="w-4 h-4 ml-1" /> : undefined}
-            className="w-full mt-2 py-3.5 text-sm font-extrabold rounded-2xl bg-gradient-to-tr from-[#7C3AED] via-[#6366F1] to-[#0878e8] hover:opacity-95 transition-all shadow-sm cursor-pointer"
+            disabled={loading || isLoading}
+            className="w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8] hover:opacity-95 transition-all shadow-sm active:scale-[0.99] cursor-pointer disabled:opacity-60 mt-2"
           >
-            Sign In to Account
-          </MexoButton>
+            {loading || isLoading ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Signing in…</span>
+              </>
+            ) : (
+              <>
+                Sign In to Account <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
         </form>
 
         {/* Footer / MEXO Mail Link */}
