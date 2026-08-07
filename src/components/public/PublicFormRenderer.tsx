@@ -11,10 +11,12 @@ interface PublicFormRendererProps {
   onAnswerChange?: (answers: Record<string, any>) => void;
   onSubmit?: (answers: { question_id: string; answer_text?: string; answer_json?: any }[]) => Promise<void>;
   submitting?: boolean;
+  /** Optional slot rendered to the right of the form title (e.g. three-dot action menu) */
+  headerSlot?: React.ReactNode;
 }
 
 export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
-  form, questions, isPreview = false, initialAnswers, onAnswerChange, onSubmit, submitting = false,
+  form, questions, isPreview = false, initialAnswers, onAnswerChange, onSubmit, submitting = false, headerSlot,
 }) => {
   const [answers, setAnswers] = useState<Record<string, any>>(() => initialAnswers || {});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -243,12 +245,18 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
       <div className="border-b border-app-border">
         <div className={`h-2.5 bg-gradient-to-r ${getThemeGradient(form.theme_color)} rounded-t-2xl`} />
         <div className="px-6 sm:px-8 py-6">
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-app-heading">{form.title}</h1>
-            {form.form_type === 'quiz' && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700">
-                Quiz
-              </span>
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-app-heading">{form.title}</h1>
+              {form.form_type === 'quiz' && (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 shrink-0">
+                  Quiz
+                </span>
+              )}
+            </div>
+            {/* Three-dot / action menu slot */}
+            {!isPreview && headerSlot && (
+              <div className="shrink-0 -mr-2 -mt-1">{headerSlot}</div>
             )}
           </div>
           {form.description && <p className="text-sm text-app-body mt-2">{form.description}</p>}
