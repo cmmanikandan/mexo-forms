@@ -149,7 +149,19 @@ export const responseService = {
       .eq('status', 'submitted')
       .order('submitted_at', { ascending: false })
       .range(page * pageSize, (page + 1) * pageSize - 1);
-    if (error) return [];
+
+    if (!error && data && data.length > 0) {
+      return data as FormResponse[];
+    }
+
+    // RPC Fallback (bypasses RLS if direct SELECT returned empty)
+    try {
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('get_form_responses', { p_form_id: formId });
+      if (!rpcErr && rpcData && rpcData.length > 0) {
+        return rpcData as FormResponse[];
+      }
+    } catch (e) {}
+
     return (data as FormResponse[]) || [];
   },
 
@@ -170,25 +182,49 @@ export const responseService = {
   },
 
   async getAllAnswersForForm(formId: string): Promise<FormAnswer[]> {
-    const { data: responses } = await supabase
-      .from('form_responses')
-      .select('id')
-      .eq('form_id', formId);
+    const responses = await this.getResponses(formId, 0, 5000);
     if (!responses || responses.length === 0) return [];
 
     const responseIds = responses.map(r => r.id);
-    const { data: answers } = await supabase
+    const { data: answers, error } = await supabase
       .from('form_answers')
       .select('*')
       .in('response_id', responseIds);
+
+    if (!error && answers && answers.length > 0) {
+      return answers as FormAnswer[];
+    }
+
+    // RPC Fallback (bypasses RLS if direct SELECT returned empty)
+    try {
+      const { data: rpcAnswers, error: rpcErr } = await supabase.rpc('get_form_answers', { p_form_id: formId });
+      if (!rpcErr && rpcAnswers && rpcAnswers.length > 0) {
+        return rpcAnswers as FormAnswer[];
+      }
+    } catch (e) {}
+
     return (answers as FormAnswer[]) || [];
   },
 
   async getAnalytics(formId: string): Promise<ResponseAnalytics> {
-    const { data: responses } = await supabase
-      .from('form_responses')
-      .select('submitted_at, created_at, started_at, status, device_type, completion_time_seconds')
-      .eq('form_id', formId);
+    let allResponses = await this.getResponses(formId, 0, 5000);
+
+    let rpcCount = 0;
+    try {
+      const countResult = await supabase.rpc('get_form_response_count', { p_form_id: formId });
+      rpcCount = countResult.data || 0;
+    } catch (e) {}
+
+    if (allResponses.length === 0) {
+      const { data: directResponses } = await supabase
+        .from('form_responses')
+        .select('submitted_at, created_at, started_at, status, device_type, completion_time_seconds')
+        .eq('form_id', formId);
+
+      if (directResponses && directResponses.length > 0) {
+        allResponses = directResponses as unknown as FormResponse[];
+      }
+    }
 
     const getLocalDateString = (input: string | Date | undefined | null): string => {
       if (!input) return '';
@@ -200,9 +236,10 @@ export const responseService = {
       return `${y}-${m}-${day}`;
     };
 
-    const allResponses = (responses || []) as unknown as FormResponse[];
+    const submitted = allResponses.filter(r => !r.status || r.status === 'submitted' || (r.status as string) === 'completed');
+    const total = Math.max(submitted.length > 0 ? submitted.length : allResponses.length, rpcCount);
 
-    if (allResponses.length === 0) {
+    if (total === 0) {
       const emptyTrend: { date: string; label: string; count: number }[] = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
@@ -225,9 +262,6 @@ export const responseService = {
         trend: emptyTrend,
       };
     }
-
-    const submitted = allResponses.filter(r => !r.status || r.status === 'submitted' || (r.status as string) === 'completed');
-    const total = submitted.length > 0 ? submitted.length : allResponses.length;
     const todayStr = getLocalDateString(new Date());
     const getRespDate = (r: any) => r.submitted_at || r.created_at;
 
