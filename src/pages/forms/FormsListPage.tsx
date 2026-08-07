@@ -8,7 +8,10 @@ import { FormCard } from '../../components/forms/FormCard';
 import { CreateFormModal } from '../../components/forms/CreateFormModal';
 import { formService } from '../../services/formService';
 import { Form, FormStatus } from '../../types/forms';
-import { Plus, FileText, Search, SlidersHorizontal, X } from 'lucide-react';
+import { useToast } from '../../hooks/useToast';
+import { MexoToastContainer } from '../../components/common/MexoToast';
+import { Plus, FileText, Search, X } from 'lucide-react';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const STATUS_FILTERS: { label: string; value: FormStatus | 'all' }[] = [
   { label: 'All', value: 'all' },
@@ -17,13 +20,13 @@ const STATUS_FILTERS: { label: string; value: FormStatus | 'all' }[] = [
   { label: 'Closed', value: 'closed' },
 ];
 
-import { useDocumentTitle } from '../../hooks/useDocumentTitle';
-
 export const FormsListPage: React.FC = () => {
   useDocumentTitle('My Forms');
   const { profile } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { toasts, addToast, removeToast } = useToast();
+
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -54,9 +57,25 @@ export const FormsListPage: React.FC = () => {
     return r;
   }, [forms, search, statusFilter, sortBy]);
 
-  const handleFormCreated = (form: Form) => { setCreateOpen(false); navigate(`/forms/${form.id}/edit`); };
-  const handleFormDeleted = (id: string) => setForms(prev => prev.filter(f => f.id !== id));
-  const handleFormStarred = (id: string, starred: boolean) => setForms(prev => prev.map(f => f.id === id ? { ...f, is_starred: starred } : f));
+  const handleFormCreated = (form: Form) => {
+    setCreateOpen(false);
+    navigate(`/forms/${form.id}/edit`);
+  };
+
+  const handleFormDeleted = (id: string) => {
+    setForms(prev => prev.filter(f => f.id !== id));
+  };
+
+  const handleFormRestored = (restoredForm: Form) => {
+    setForms(prev => {
+      if (prev.some(f => f.id === restoredForm.id)) return prev;
+      return [restoredForm, ...prev];
+    });
+  };
+
+  const handleFormStarred = (id: string, starred: boolean) => {
+    setForms(prev => prev.map(f => f.id === id ? { ...f, is_starred: starred } : f));
+  };
 
   return (
     <AppShell>
@@ -142,13 +161,21 @@ export const FormsListPage: React.FC = () => {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map(f => (
-              <FormCard key={f.id} form={f} onDeleted={handleFormDeleted} onStarred={handleFormStarred} />
+              <FormCard
+                key={f.id}
+                form={f}
+                onDeleted={handleFormDeleted}
+                onRestored={handleFormRestored}
+                onStarred={handleFormStarred}
+                onShowToast={addToast}
+              />
             ))}
           </div>
         )}
       </div>
 
       <CreateFormModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={handleFormCreated} />
+      <MexoToastContainer toasts={toasts} removeToast={removeToast} />
     </AppShell>
   );
 };

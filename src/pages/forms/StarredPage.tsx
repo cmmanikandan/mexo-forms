@@ -7,11 +7,14 @@ import { MexoSkeletonCard, MexoEmptyState } from '../../components/common/MexoSk
 import { FormCard } from '../../components/forms/FormCard';
 import { formService } from '../../services/formService';
 import { Form } from '../../types/forms';
+import { useToast } from '../../hooks/useToast';
+import { MexoToastContainer } from '../../components/common/MexoToast';
 import { Star } from 'lucide-react';
 
 export const StarredPage: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { toasts, addToast, removeToast } = useToast();
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -21,6 +24,12 @@ export const StarredPage: React.FC = () => {
   }, [profile]);
 
   const handleFormDeleted = (id: string) => setForms(prev => prev.filter(f => f.id !== id));
+  const handleFormRestored = (restoredForm: Form) => {
+    if (restoredForm.is_starred) {
+      setForms(prev => [restoredForm, ...prev]);
+    }
+  };
+
   const handleFormStarred = (id: string, starred: boolean) => {
     if (!starred) setForms(prev => prev.filter(f => f.id !== id));
   };
@@ -42,10 +51,21 @@ export const StarredPage: React.FC = () => {
           />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {forms.map(f => <FormCard key={f.id} form={f} onDeleted={handleFormDeleted} onStarred={handleFormStarred} />)}
+            {forms.map(f => (
+              <FormCard
+                key={f.id}
+                form={f}
+                onDeleted={handleFormDeleted}
+                onRestored={handleFormRestored}
+                onStarred={handleFormStarred}
+                onShowToast={addToast}
+              />
+            ))}
           </div>
         )}
       </div>
+
+      <MexoToastContainer toasts={toasts} removeToast={removeToast} />
     </AppShell>
   );
 };

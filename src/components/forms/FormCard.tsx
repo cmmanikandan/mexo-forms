@@ -14,22 +14,55 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface FormCardProps {
   form: Form;
-  onDeleted?: (id: string) => void;
+  onDeleted?: (id: string, form: Form) => void;
+  onRestored?: (form: Form) => void;
   onStarred?: (id: string, starred: boolean) => void;
+  onShowToast?: (toast: {
+    type: 'success' | 'error' | 'info' | 'warning';
+    message: string;
+    duration?: number;
+    action?: { label: string; onClick: () => void };
+  }) => void;
 }
 
-export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }) => {
+export const FormCard: React.FC<FormCardProps> = ({
+  form,
+  onDeleted,
+  onRestored,
+  onStarred,
+  onShowToast,
+}) => {
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const handleDelete = async () => {
+  const handleDeleteConfirm = async () => {
     setDeleting(true);
     await formService.trashForm(form.id);
     setDeleting(false);
     setDeleteOpen(false);
-    onDeleted?.(form.id);
+
+    // Remove from UI immediately
+    onDeleted?.(form.id, form);
+
+    // Show Undo Toast for 5 seconds
+    onShowToast?.({
+      type: 'info',
+      message: `"${form.title}" moved to trash.`,
+      duration: 5000,
+      action: {
+        label: 'Undo',
+        onClick: async () => {
+          await formService.restoreForm(form.id);
+          onRestored?.(form);
+          onShowToast?.({
+            type: 'success',
+            message: `"${form.title}" restored successfully.`,
+          });
+        },
+      },
+    });
   };
 
   const handleStar = async () => {
@@ -67,7 +100,7 @@ export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }
               <DropdownMenu.Trigger asChild>
                 <button
                   id={`form-menu-${form.id}`}
-                  className="p-1.5 rounded-xl text-app-muted hover:bg-slate-100 hover:text-app-heading transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 sm:focus:opacity-100"
+                  className="p-1.5 rounded-xl text-app-muted hover:bg-slate-100 hover:text-app-heading transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 sm:focus:opacity-100 cursor-pointer"
                   aria-label="Form options"
                 >
                   <MoreVertical className="w-4 h-4" />
@@ -119,9 +152,15 @@ export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }
                   </DropdownMenu.Item>
                   <DropdownMenu.Separator className="h-px bg-app-border my-1" />
                   <DropdownMenu.Item
-                    onSelect={() => setDeleteOpen(true)}
-                    onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }}
-                    className="flex items-center px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 cursor-pointer outline-none"
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTimeout(() => setDeleteOpen(true), 50);
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTimeout(() => setDeleteOpen(true), 50);
+                    }}
+                    className="flex items-center px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 cursor-pointer outline-none font-bold"
                   >
                     <Trash2 className="w-3.5 h-3.5 mr-2 text-rose-500" /> Move to Trash
                   </DropdownMenu.Item>
@@ -155,11 +194,11 @@ export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }
       <MexoConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Move to Trash"
-        description={`"${form.title}" will be moved to Trash. You can restore it later.`}
+        title="Move Form to Trash?"
+        description={`"${form.title}" will be moved to Trash. You can restore it anytime.`}
         confirmLabel="Move to Trash"
         variant="danger"
-        onConfirm={handleDelete}
+        onConfirm={handleDeleteConfirm}
         loading={deleting}
       />
     </div>

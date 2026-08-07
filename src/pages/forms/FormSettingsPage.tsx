@@ -419,8 +419,21 @@ export const FormSettingsPage: React.FC = () => {
         variant="danger"
         onConfirm={async () => {
           if (!id) return;
-          await formService.trashForm(id);
-          addToast({ type: 'info', message: 'Form moved to trash' });
+          const formId = id;
+          const formTitle = formData.title;
+          await formService.trashForm(formId);
+          addToast({
+            type: 'info',
+            message: `"${formTitle}" moved to trash.`,
+            duration: 5000,
+            action: {
+              label: 'Undo',
+              onClick: async () => {
+                await formService.restoreForm(formId);
+                addToast({ type: 'success', message: `"${formTitle}" restored successfully.` });
+              },
+            },
+          });
           navigate('/forms');
         }}
       />

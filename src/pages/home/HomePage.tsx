@@ -8,11 +8,12 @@ import { FormCard } from '../../components/forms/FormCard';
 import { CreateFormModal } from '../../components/forms/CreateFormModal';
 import { formService } from '../../services/formService';
 import { Form } from '../../types/forms';
+import { useToast } from '../../hooks/useToast';
+import { MexoToastContainer } from '../../components/common/MexoToast';
 import {
   Plus, FileText, MessageSquare, Users, Layout,
-  ClipboardCheck, Star, Zap,
+  ClipboardCheck, Zap,
 } from 'lucide-react';
-
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 
 const QUICK_TEMPLATES = [
@@ -27,6 +28,7 @@ export const HomePage: React.FC = () => {
   useDocumentTitle('Dashboard');
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { toasts, addToast, removeToast } = useToast();
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -51,6 +53,13 @@ export const HomePage: React.FC = () => {
 
   const handleFormDeleted = (formId: string) => {
     setForms(prev => prev.filter(f => f.id !== formId));
+  };
+
+  const handleFormRestored = (restoredForm: Form) => {
+    setForms(prev => {
+      if (prev.some(f => f.id === restoredForm.id)) return prev;
+      return [restoredForm, ...prev];
+    });
   };
 
   const handleFormStarred = (formId: string, starred: boolean) => {
@@ -94,7 +103,7 @@ export const HomePage: React.FC = () => {
                   if (tmpl.id === 'blank') setCreateOpen(true);
                   else navigate(`/templates?t=${tmpl.id}`);
                 }}
-                className="group flex flex-col items-center gap-2.5 p-4 bg-white rounded-2xl border border-app-border hover:border-indigo-200 hover:shadow-mexo-md transition-all text-center"
+                className="group flex flex-col items-center gap-2.5 p-4 bg-white rounded-2xl border border-app-border hover:border-indigo-200 hover:shadow-mexo-md transition-all text-center cursor-pointer"
               >
                 <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tmpl.color} text-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform`}>
                   {tmpl.icon}
@@ -113,7 +122,7 @@ export const HomePage: React.FC = () => {
               <button
                 id="view-all-forms"
                 onClick={() => navigate('/forms')}
-                className="text-xs font-semibold text-[#7C3AED] hover:text-[#6D28D9] transition-colors"
+                className="text-xs font-semibold text-[#7C3AED] hover:text-[#6D28D9] transition-colors cursor-pointer"
               >
                 View all →
               </button>
@@ -142,12 +151,14 @@ export const HomePage: React.FC = () => {
             />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {forms.map(form => (
+              {forms.map(f => (
                 <FormCard
-                  key={form.id}
-                  form={form}
+                  key={f.id}
+                  form={f}
                   onDeleted={handleFormDeleted}
+                  onRestored={handleFormRestored}
                   onStarred={handleFormStarred}
+                  onShowToast={addToast}
                 />
               ))}
             </div>
@@ -155,11 +166,8 @@ export const HomePage: React.FC = () => {
         </div>
       </div>
 
-      <CreateFormModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={handleFormCreated}
-      />
+      <CreateFormModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={handleFormCreated} />
+      <MexoToastContainer toasts={toasts} removeToast={removeToast} />
     </AppShell>
   );
 };

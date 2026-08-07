@@ -1,10 +1,16 @@
 import { useState, useCallback } from 'react';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void | Promise<void>;
+}
+
 export interface Toast {
   id: string;
   message: string;
   type: 'success' | 'error' | 'info' | 'warning';
   duration?: number;
+  action?: ToastAction;
 }
 
 export function useToast() {
@@ -14,7 +20,7 @@ export function useToast() {
     const id = crypto.randomUUID();
     const newToast = { ...toast, id };
     setToasts(prev => [...prev, newToast]);
-    const duration = toast.duration ?? 3500;
+    const duration = toast.duration ?? (toast.action ? 5000 : 3500);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, duration);
