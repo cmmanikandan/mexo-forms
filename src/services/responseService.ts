@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { authService } from './authService';
 import { FormResponse, FormAnswer, ResponseAnalytics } from '../types/forms';
 
 export const responseService = {
@@ -10,9 +11,8 @@ export const responseService = {
     startedAtISO?: string,
   ): Promise<{ success: boolean; responseId?: string; error?: string }> {
     try {
-      // 0. Verify Supabase Auth session first (single source of truth)
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) throw sessionError;
+      // 0. Verify Auth session first (single source of truth)
+      const session = await authService.getSession();
 
       if (!session?.user?.id) {
         return {
@@ -125,9 +125,9 @@ export const responseService = {
     }
     
     // Resolve authenticated UID if available
-    const { data: sessionData } = await supabase.auth.getSession();
-    const currentUid = respondentId || sessionData?.session?.user?.id;
-    const currentEmail = respondentEmail || sessionData?.session?.user?.email;
+    const session = await authService.getSession();
+    const currentUid = respondentId || session?.user?.id;
+    const currentEmail = respondentEmail || session?.user?.email;
 
     if (!currentUid && !currentEmail) return false;
 

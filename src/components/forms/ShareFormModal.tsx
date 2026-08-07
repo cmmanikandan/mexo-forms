@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Form } from '../../types/forms';
+import React, { useState, useEffect } from 'react';
+import { Form, MexoProfile } from '../../types/forms';
+import { formService } from '../../services/formService';
 import { MexoModal } from '../common/MexoModal';
 import {
   Copy, Check, ExternalLink, Download, QrCode, Share2, Code, Mail,
-  MessageCircle, Send, Globe, GraduationCap,
+  MessageCircle, Send, Globe, GraduationCap, Users, UserPlus, Trash2, User,
 } from 'lucide-react';
 
 interface ShareFormModalProps {
@@ -15,7 +16,34 @@ interface ShareFormModalProps {
 export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChange, form }) => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedEmbed, setCopiedEmbed] = useState(false);
-  const [activeTab, setActiveTab] = useState<'link' | 'qr' | 'embed'>('link');
+  const [activeTab, setActiveTab] = useState<'link' | 'qr' | 'embed' | 'collaborators'>('link');
+
+  const [collaborators, setCollaborators] = useState<any[]>([]);
+  const [loadingCollabs, setLoadingCollabs] = useState(false);
+  const [collabInput, setCollabInput] = useState('');
+  const [collabRole, setCollabRole] = useState<'editor' | 'viewer'>('editor');
+  const [collabError, setCollabError] = useState<string | null>(null);
+  const [collabSuccess, setCollabSuccess] = useState<string | null>(null);
+  const [addingCollab, setAddingCollab] = useState(false);
+
+  useEffect(() => {
+    if (open && form?.id && activeTab === 'collaborators') {
+      fetchCollaborators();
+    }
+  }, [open, form?.id, activeTab]);
+
+  const fetchCollaborators = async () => {
+    if (!form?.id) return;
+    setLoadingCollabs(true);
+    try {
+      const list = await formService.getFormCollaborators(form.id);
+      setCollaborators(list);
+    } catch (e) {
+      console.error('[SHARE] Error fetching collaborators:', e);
+    } finally {
+      setLoadingCollabs(false);
+    }
+  };
 
   if (!form) return null;
 
@@ -58,20 +86,51 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
     }
   };
 
+  const handleAddCollaborator = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!collabInput.trim()) return;
+    setCollabError(null);
+    setCollabSuccess(null);
+    setAddingCollab(true);
+
+    try {
+      const result = await formService.addCollaborator(form.id, collabInput.trim(), collabRole);
+      if (result.success && result.collaborator) {
+        setCollaborators(prev => [...prev, result.collaborator]);
+        setCollabInput('');
+        setCollabSuccess(`Shared form with ${result.collaborator.profile?.username || collabInput}!`);
+        setTimeout(() => setCollabSuccess(null), 3000);
+      } else {
+        setCollabError(result.error || 'Failed to add collaborator.');
+      }
+    } catch (err: any) {
+      setCollabError(err?.message || 'Error adding collaborator.');
+    } finally {
+      setAddingCollab(false);
+    }
+  };
+
+  const handleRemoveCollaborator = async (userId: string) => {
+    const ok = await formService.removeCollaborator(form.id, userId);
+    if (ok) {
+      setCollaborators(prev => prev.filter(c => c.user_id !== userId));
+    }
+  };
+
   return (
     <MexoModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Share Form"
-      maxWidth="max-w-md"
+      title="Share Form & Invite"
+      maxWidth="max-w-lg"
     >
       <div className="space-y-5">
         {/* Segmented control tabs */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('link')}
-            className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 min-w-[70px] ${
               activeTab === 'link' ? 'bg-white text-app-heading shadow-mexo-sm' : 'text-app-muted hover:text-app-body'
             }`}
           >
@@ -79,8 +138,17 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab('collaborators')}
+            className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 min-w-[100px] ${
+              activeTab === 'collaborators' ? 'bg-white text-app-heading shadow-mexo-sm' : 'text-app-muted hover:text-app-body'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 text-[#7C3AED]" /> Invite Users
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('qr')}
-            className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 min-w-[75px] ${
               activeTab === 'qr' ? 'bg-white text-app-heading shadow-mexo-sm' : 'text-app-muted hover:text-app-body'
             }`}
           >
@@ -89,7 +157,7 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
           <button
             type="button"
             onClick={() => setActiveTab('embed')}
-            className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 min-w-[70px] ${
               activeTab === 'embed' ? 'bg-white text-app-heading shadow-mexo-sm' : 'text-app-muted hover:text-app-body'
             }`}
           >
@@ -174,25 +242,6 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
               </div>
             </div>
 
-            {/* Feature App Integrations */}
-            <div>
-              <label className="block text-xs font-bold text-app-heading mb-2">Connected App Integrations</label>
-              <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-700">
-                    <GraduationCap className="w-4 h-4 text-amber-700" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-app-heading">Google Classroom Integration</p>
-                    <p className="text-[11px] text-app-muted">Directly assign quiz/form to class students</p>
-                  </div>
-                </div>
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-200/80 text-amber-800 flex-shrink-0">
-                  Coming Soon
-                </span>
-              </div>
-            </div>
-
             <div className="pt-2 flex justify-end">
               <a
                 href={shareUrl}
@@ -206,7 +255,97 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
           </div>
         )}
 
-        {/* Tab 2: QR Code */}
+        {/* Tab 2: Collaborators / Invite Users */}
+        {activeTab === 'collaborators' && (
+          <div className="space-y-4">
+            <form onSubmit={handleAddCollaborator} className="space-y-2">
+              <label className="block text-xs font-bold text-app-heading">
+                Invite MEXO User to Collaborate
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter MEXO Username or Email (e.g. 927624bit060)"
+                  value={collabInput}
+                  onChange={(e) => setCollabInput(e.target.value)}
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-app-heading placeholder-app-muted outline-none focus:border-[#7C3AED]"
+                />
+                <button
+                  type="submit"
+                  disabled={addingCollab || !collabInput.trim()}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#7C3AED] hover:bg-[#6D28D9] disabled:opacity-50 transition-all flex items-center gap-1.5 flex-shrink-0"
+                >
+                  <UserPlus className="w-3.5 h-3.5" /> {addingCollab ? 'Adding...' : 'Invite'}
+                </button>
+              </div>
+
+              {collabError && (
+                <p className="text-xs font-semibold text-rose-600 mt-1">{collabError}</p>
+              )}
+              {collabSuccess && (
+                <p className="text-xs font-semibold text-emerald-600 mt-1">{collabSuccess}</p>
+              )}
+            </form>
+
+            <div className="pt-2">
+              <h4 className="text-xs font-bold text-app-heading mb-2 flex items-center justify-between">
+                <span>Shared Collaborators ({collaborators.length})</span>
+                {loadingCollabs && <span className="text-[11px] text-app-muted">Loading...</span>}
+              </h4>
+
+              {collaborators.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {collaborators.map((c) => {
+                    const prof: MexoProfile | undefined = c.profile;
+                    const displayName = prof ? `${prof.first_name || ''} ${prof.last_name || ''}`.trim() || prof.username : 'MEXO User';
+                    const email = prof?.primary_address || c.user_id;
+
+                    return (
+                      <div
+                        key={c.id || c.user_id}
+                        className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {prof?.avatar_url ? (
+                            <img src={prof.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-7 h-7 rounded-full bg-purple-100 text-[#7C3AED] flex items-center justify-center font-bold text-xs">
+                              <User className="w-4 h-4" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-bold text-app-heading truncate">{displayName}</p>
+                            <p className="text-[11px] text-app-muted truncate">{email}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-50 text-[#7C3AED]">
+                            {c.role || 'Editor'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCollaborator(c.user_id)}
+                            className="p-1 text-slate-400 hover:text-rose-600 transition-colors"
+                            title="Remove collaborator"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-app-muted italic py-2">
+                  No users invited yet. Enter a username to share this form for editing.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 3: QR Code */}
         {activeTab === 'qr' && (
           <div className="flex flex-col items-center justify-center space-y-4 py-2">
             <div className="p-4 bg-white rounded-3xl border-2 border-indigo-100 shadow-mexo-card flex items-center justify-center">
@@ -236,7 +375,7 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
           </div>
         )}
 
-        {/* Tab 3: Embed */}
+        {/* Tab 4: Embed */}
         {activeTab === 'embed' && (
           <div className="space-y-4">
             <div>

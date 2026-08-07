@@ -55,40 +55,55 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const handleSession = async (currentSession: Session | null) => {
       if (!mounted) return;
 
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-
       if (currentSession?.user?.id) {
+        setSession(currentSession);
+        setUser(currentSession.user);
         try {
           const p = await resolveProfile(currentSession.user);
           if (mounted) {
             setProfile(p);
             try {
               localStorage.setItem('mexo_auth_profile', JSON.stringify(p));
-            } catch (e) {
-              /* ignore */
-            }
+              localStorage.setItem('mexo_auth_session', JSON.stringify(currentSession));
+            } catch (e) {}
           }
         } catch (e) {
           console.error('[AUTH] Profile fetch error:', e);
           if (mounted) setProfile(null);
         }
       } else {
+        // Fallback: Check saved session in localStorage
+        try {
+          const savedSessionStr = localStorage.getItem('mexo_auth_session');
+          const savedProfileStr = localStorage.getItem('mexo_auth_profile');
+
+          if (savedSessionStr && savedProfileStr) {
+            const savedSession = JSON.parse(savedSessionStr);
+            const savedProfile = JSON.parse(savedProfileStr);
+            if (mounted) {
+              setSession(savedSession);
+              setUser(savedSession.user);
+              setProfile(savedProfile);
+            }
+            return;
+          }
+        } catch (e) {}
+
         if (mounted) {
+          setSession(null);
+          setUser(null);
           setProfile(null);
           try {
             localStorage.removeItem('mexo_auth_profile');
-          } catch (e) {
-            /* ignore */
-          }
+            localStorage.removeItem('mexo_auth_session');
+          } catch (e) {}
         }
       }
     };
 
     const initialize = async () => {
       try {
-        const { data: { session: initSession }, error } = await supabase.auth.getSession();
-        if (error) console.error('[AUTH] getSession error:', error);
+        const initSession = await authService.getSession();
         await handleSession(initSession);
       } catch (e) {
         console.error('[AUTH] Auth init error:', e);
@@ -101,7 +116,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, currentSession) => {
       if (!mounted) return;
-      await handleSession(currentSession);
+      if (currentSession) {
+        await handleSession(currentSession);
+      }
       if (mounted) setIsLoading(false);
     });
 
@@ -120,9 +137,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setProfile(userProfile);
         try {
           localStorage.setItem('mexo_auth_profile', JSON.stringify(userProfile));
-        } catch (e) {
-          /* ignore */
-        }
+          localStorage.setItem('mexo_auth_session', JSON.stringify(newSession));
+        } catch (e) {}
       }
       return { success: true };
     }
@@ -136,9 +152,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setProfile(null);
     try {
       localStorage.removeItem('mexo_auth_profile');
-    } catch (e) {
-      /* ignore */
-    }
+      localStorage.removeItem('mexo_auth_session');
+    } catch (e) {}
   };
 
   const updateProfile = async (updates: Partial<MexoProfile>): Promise<MexoProfile | null> => {

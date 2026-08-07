@@ -1,4 +1,6 @@
 import { supabase } from '../lib/supabase';
+import { authService } from './authService';
+import { profileService } from './profileService';
 import { Form, FormSection, FormQuestion, FormOption, FormStatus } from '../types/forms';
 
 export const formService = {
@@ -6,8 +8,8 @@ export const formService = {
   // FORMS CRUD
   // =============================================
   async createForm(userId: string, title: string = 'Untitled Form'): Promise<Form | null> {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const activeUserId = sessionData.session?.user?.id || userId;
+    const session = await authService.getSession();
+    const activeUserId = session?.user?.id || userId;
     const slug = `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40)}-${Date.now().toString(36)}`;
     const { data, error } = await supabase
       .from('forms')
@@ -347,6 +349,95 @@ export const formService = {
       .or(`title.ilike.%${query}%,description.ilike.%${query}%`)
       .order('updated_at', { ascending: false });
     return (data as Form[]) || [];
+  },
+
+  // =============================================
+  // COLLABORATORS & SHARED FORMS
+  // =============================================
+  async getSharedForms(userId: string): Promise<Form[]> {
+    const { data: collabData, error: collabErr } = await supabase
+      .from('form_collaborators')
+      .select('form_id')
+      .eq('user_id', userId);
+
+    if (collabErr || !collabData || collabData.length === 0) return [];
+
+    const formIds = collabData.map(c => c.form_id);
+    const { data: formsData, error: formsErr } = await supabase
+      .from('forms')
+      .select('*')
+      .in('id', formIds)
+      .neq('status', 'trashed')
+      .order('updated_at', { ascending: false });
+
+    if (formsErr || !formsData) return [];
+
+    const forms = formsData as Form[];
+    const counts = await Promise.all(
+      forms.map(f => supabase.rpc('get_form_response_count', { p_form_id: f.id }))
+    );
+    return forms.map((f, i) => ({ ...f, response_count: counts[i].data || 0 }));
+  },
+
+  async getFormCollaborators(formId: string): Promise<any[]> {
+    const { data, error } = await supabase
+      .from('form_collaborators')
+      .select('*')
+      .eq('form_id', formId);
+
+    if (error || !data) return [];
+
+    const collabs = await Promise.all(
+      data.map(async (item) => {
+        const profile = await profileService.getProfileById(item.user_id);
+        return { ...item, profile };
+      })
+    );
+    return collabs;
+  },
+
+  async addCollaborator(formId: string, emailOrUsername: string, role: string = 'editor'): Promise<{ success: boolean; error?: string; collaborator?: any }> {
+    const profile = await profileService.getProfileByIdentifier(emailOrUsername);
+    if (!profile) {
+      return { success: false, error: 'MEXO Account user not found. Please check username or email.' };
+    }
+
+    // Check if already added
+    const { data: existing } = await supabase
+      .from('form_collaborators')
+      .select('id')
+      .eq('form_id', formId)
+      .eq('user_id', profile.id)
+      .maybeSingle();
+
+    if (existing) {
+      return { success: false, error: 'This user is already a collaborator on this form.' };
+    }
+
+    const { data, error } = await supabase
+      .from('form_collaborators')
+      .insert({
+        form_id: formId,
+        user_id: profile.id,
+        role: role || 'editor',
+      })
+      .select('*')
+      .single();
+
+    if (error || !data) {
+      return { success: false, error: error?.message || 'Failed to add collaborator.' };
+    }
+
+    return { success: true, collaborator: { ...data, profile } };
+  },
+
+  async removeCollaborator(formId: string, userId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('form_collaborators')
+      .delete()
+      .eq('form_id', formId)
+      .eq('user_id', userId);
+    return !error;
   },
 };
 
