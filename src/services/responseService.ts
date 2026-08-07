@@ -9,7 +9,8 @@ export const responseService = {
     respondentId?: string,
     respondentEmail?: string,
     startedAtISO?: string,
-  ): Promise<{ success: boolean; responseId?: string; error?: string }> {
+    idempotencyKey?: string,
+  ): Promise<{ success: boolean; responseId?: string; registrationRef?: string; error?: string }> {
     try {
       // 0. Verify Auth session first (single source of truth)
       let session = await authService.getSession();
@@ -48,9 +49,17 @@ export const responseService = {
         p_started_at: startedAt,
         p_completion_time_seconds: durationSeconds,
         p_device_type: deviceType,
+        p_idempotency_key: idempotencyKey || null,
       });
 
       if (!rpcError && rpcData) {
+        if (typeof rpcData === 'object' && rpcData !== null) {
+          return {
+            success: true,
+            responseId: rpcData.response_id,
+            registrationRef: rpcData.registration_ref,
+          };
+        }
         return { success: true, responseId: rpcData as string };
       }
 

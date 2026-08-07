@@ -264,9 +264,13 @@ export const PublicFormPage: React.FC = () => {
     return `${prefix}-${code}`;
   };
 
+  // Submission idempotency key ref (reused on retries for the same attempt)
+  const submissionIdempotencyKey = useRef<string>(crypto.randomUUID());
+
   const handleSubmit = async (answers: { question_id: string; answer_text?: string; answer_json?: any }[]) => {
     if (!form || submitting) return;
 
+    // Availability validation check
     const avail = getFormAvailability(form, form.response_count || 0);
     if (!avail.canSubmit) {
       setSubmissionError(`${avail.closedTitle}: ${avail.closedMessage}`);
@@ -289,11 +293,12 @@ export const PublicFormPage: React.FC = () => {
         session?.user?.id || profile?.id,
         profile?.primary_address,
         startedAtISO,
+        submissionIdempotencyKey.current,
       );
 
       if (result.success) {
         setSubmittedPayload(answers);
-        setRegistrationRef(regRef);
+        setRegistrationRef(result.registrationRef || regRef);
         setSubmittedAt(new Date());
         // Step 2: Cleanup draft & local backup
         try {

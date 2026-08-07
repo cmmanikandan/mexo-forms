@@ -21,6 +21,7 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
 }) => {
   const [answers, setAnswers] = useState<Record<string, any>>(() => initialAnswers || {});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [displayQuestions, setDisplayQuestions] = useState<FormQuestion[]>(questions);
 
   useEffect(() => {
@@ -166,17 +167,22 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
     return String(parentAns).trim().toLowerCase() === targetVal;
   }, [answers]);
 
-  const validateAll = () => {
+  const validateAll = (): boolean => {
     const newErrors: Record<string, string> = {};
     questions.forEach(q => {
       if (q.required && q.question_type !== 'page_break' && isQuestionVisible(q)) {
         const ans = answers[q.id];
-        if (!ans || (Array.isArray(ans) && ans.length === 0) || (typeof ans === 'string' && !ans.trim())) {
-          newErrors[q.id] = 'This field is required.';
+        if (ans === undefined || ans === null || (Array.isArray(ans) && ans.length === 0) || (typeof ans === 'string' && !ans.trim())) {
+          newErrors[q.id] = 'This question is required.';
         }
       }
     });
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setFormError('Please complete all required fields before submitting.');
+    } else {
+      setFormError(null);
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -197,7 +203,11 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
     e.preventDefault();
     if (isPreview) return;
     if (!validateAll()) {
-      const firstErr = questions.find(q => q.required && isQuestionVisible(q) && !answers[q.id]);
+      const firstErr = questions.find(q => q.required && isQuestionVisible(q) && (
+        answers[q.id] === undefined || answers[q.id] === null ||
+        (Array.isArray(answers[q.id]) && answers[q.id].length === 0) ||
+        (typeof answers[q.id] === 'string' && !answers[q.id].trim())
+      ));
       if (firstErr) {
         // Find page of error
         const errPageIndex = pages.findIndex(p => p.questions.some(q => q.id === firstErr.id));
@@ -327,6 +337,15 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
       {/* Questions */}
       <form onSubmit={handleSubmit} noValidate>
         <div className="px-6 sm:px-8 py-6 space-y-6">
+          {formError && (
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-800 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{formError}</span>
+              </div>
+              <button type="button" onClick={() => setFormError(null)} className="text-rose-600 font-bold text-xs hover:underline">Dismiss</button>
+            </div>
+          )}
           {currentQuestions.map((q, idx) => (
             <div key={q.id} id={`public-q-${q.id}`} className="space-y-2">
               <label className="block text-sm font-semibold text-app-heading">
