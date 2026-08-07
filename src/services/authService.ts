@@ -128,7 +128,54 @@ export const authService = {
         }
       }
 
-      // Step 4: Handle authentication failures cleanly
+      // Step 4: Server-side PostgreSQL RPC Password Verification Fallback
+      try {
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('mexo_authenticate_user', {
+          p_identifier: cleanInput,
+          p_password: cleanPassword,
+        });
+
+        if (!rpcErr && rpcRes?.success && rpcRes?.user_id) {
+          const userId = rpcRes.user_id;
+          const userEmail = rpcRes.email || (cleanInput.includes('@') ? cleanInput : `${cleanInput}@mexo.com`);
+          const userProfile = (await profileService.getProfileById(userId)) || profile;
+
+          const authenticatedUser: any = {
+            id: userId,
+            app_metadata: { provider: 'mexo' },
+            user_metadata: {
+              full_name: userProfile ? `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() : cleanInput,
+              username: userProfile?.username || cleanInput,
+              avatar_url: userProfile?.avatar_url,
+            },
+            aud: 'authenticated',
+            created_at: userProfile?.created_at || new Date().toISOString(),
+            email: userEmail,
+            role: 'authenticated',
+            updated_at: new Date().toISOString(),
+          };
+
+          const authenticatedSession: Session = {
+            access_token: `mexo_jwt_${userId}`,
+            token_type: 'bearer',
+            expires_in: 86400,
+            refresh_token: `mexo_refresh_${userId}`,
+            user: authenticatedUser,
+          };
+
+          if ((import.meta as any).env?.DEV) {
+            console.debug('[MEXO AUTH] RPC authentication success for user:', userId);
+          }
+
+          return { session: authenticatedSession, user: userProfile, error: null };
+        }
+      } catch (rpcErr) {
+        if ((import.meta as any).env?.DEV) {
+          console.error('[MEXO AUTH] RPC auth error:', rpcErr);
+        }
+      }
+
+      // Step 5: Handle authentication failures cleanly
       if (lastError) {
         const errStatus = lastError.status || 0;
         const errMsg = (lastError.message || '').toLowerCase();
