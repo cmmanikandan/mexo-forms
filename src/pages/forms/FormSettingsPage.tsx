@@ -9,7 +9,7 @@ import { MexoInput, MexoTextarea } from '../../components/common/MexoInput';
 import { MexoToggle } from '../../components/common/MexoToggle';
 import { useToast } from '../../hooks/useToast';
 import { MexoToastContainer } from '../../components/common/MexoToast';
-import { ArrowLeft, Save, Trash2, Copy } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Copy, Check } from 'lucide-react';
 
 export const FormSettingsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +19,7 @@ export const FormSettingsPage: React.FC = () => {
   const [form, setForm] = useState<Form | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [trashConfirmOpen, setTrashConfirmOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -74,11 +75,14 @@ export const FormSettingsPage: React.FC = () => {
   const handleSave = async () => {
     if (!id) return;
     setSaving(true);
+    setSaved(false);
     const updated = await formService.updateForm(id, formData);
     setSaving(false);
     if (updated) {
       setForm(updated);
-      addToast({ type: 'success', message: 'Form settings saved!' });
+      setSaved(true);
+      addToast({ type: 'success', message: 'Form settings saved successfully!' });
+      setTimeout(() => setSaved(false), 3000);
     }
   };
 
@@ -114,8 +118,16 @@ export const FormSettingsPage: React.FC = () => {
             </button>
             <h1 className="text-xl font-extrabold text-app-heading">Form Settings</h1>
           </div>
-          <MexoButton id="save-settings" variant="primary" size="sm" leftIcon={<Save className="w-4 h-4" />} onClick={handleSave} loading={saving}>
-            Save Changes
+          <MexoButton
+            id="save-settings"
+            variant={saved ? 'primary' : 'primary'}
+            size="sm"
+            leftIcon={saved ? <Check className="w-4 h-4 text-emerald-300" /> : <Save className="w-4 h-4" />}
+            onClick={handleSave}
+            loading={saving}
+            className={saved ? '!bg-emerald-600 !hover:bg-emerald-700 text-white transition-all font-bold' : ''}
+          >
+            {saved ? 'Saved ✓' : 'Save Changes'}
           </MexoButton>
         </div>
 
