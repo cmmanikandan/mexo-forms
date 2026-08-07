@@ -162,7 +162,8 @@ export const PublicFormPage: React.FC = () => {
         setDraftSource(source);
       }
 
-      const q = await formService.getQuestions(f.id);
+      const isOwner = session?.user?.id === f.owner_id;
+      const q = await formService.getPublicQuestions(f.id, isOwner);
       setQuestions(q);
       setLoading(false);
     };

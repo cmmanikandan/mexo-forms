@@ -232,6 +232,20 @@ export const formService = {
     }));
   },
 
+  async getPublicQuestions(formId: string, isOwner: boolean = false): Promise<FormQuestion[]> {
+    const questions = await formService.getQuestions(formId);
+    if (isOwner) return questions;
+
+    // Sanitize is_correct flag for non-owners to prevent cheating via DevTools inspect
+    return questions.map(q => ({
+      ...q,
+      options: (q.options || []).map(o => ({
+        ...o,
+        is_correct: false,
+      })),
+    }));
+  },
+
   async addQuestion(formId: string, questionType: string, position: number): Promise<FormQuestion | null> {
     const defaults = getQuestionDefaults(questionType);
     const { data, error } = await supabase

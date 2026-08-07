@@ -10,6 +10,7 @@ import { MexoInput, MexoTextarea } from '../../components/common/MexoInput';
 import { MexoToggle } from '../../components/common/MexoToggle';
 import { useToast } from '../../hooks/useToast';
 import { MexoToastContainer } from '../../components/common/MexoToast';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   ArrowLeft, Save, Trash2, Copy, Check, Upload, Paperclip, X,
   ExternalLink, Calendar, Clock, Globe, ShieldCheck, Users, Lock, AlertCircle, HelpCircle,
@@ -202,10 +203,10 @@ export const FormSettingsPage: React.FC = () => {
     }
   };
 
+  const { session } = useAuth();
+
   const handleSave = async () => {
     if (!id || !form) return;
-    setSaving(true);
-    setSaved(false);
 
     // Compute updated fields
     const startsAtISO = formData.start_mode === 'scheduled' && formData.starts_at
@@ -215,6 +216,15 @@ export const FormSettingsPage: React.FC = () => {
     const endsAtISO = formData.enable_auto_close && formData.ends_at
       ? new Date(formData.ends_at).toISOString()
       : null;
+
+    // Deadline validation
+    if (startsAtISO && endsAtISO && new Date(endsAtISO) <= new Date(startsAtISO)) {
+      addToast({ type: 'error', message: 'End time must be after the form start time.' });
+      return;
+    }
+
+    setSaving(true);
+    setSaved(false);
 
     // Live extension check: if form was closed by deadline, but new end date is in future + accepting_responses is ON
     let status = form.status;
