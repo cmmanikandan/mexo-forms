@@ -128,14 +128,17 @@ export const AppSettingsPage: React.FC = () => {
                 <div className="flex items-center justify-between border-b border-app-border pb-4">
                   <div>
                     <h2 className="text-base font-extrabold text-app-heading">MEXO Account Profile</h2>
-                    <p className="text-xs text-app-muted mt-0.5">Your unified MEXO Ecosystem identity</p>
+                    <p className="text-xs text-app-muted mt-0.5">Your central MEXO Ecosystem identity</p>
                   </div>
-                  <span className="px-3 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Active MEXO User
-                  </span>
+                  <button
+                    onClick={() => navigate('/account')}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-tr from-[#7C3AED] via-[#6366F1] to-[#0878e8] text-white font-extrabold text-xs shadow-xs hover:opacity-95 transition-all cursor-pointer"
+                  >
+                    Open MEXO Account →
+                  </button>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 p-4 rounded-2xl bg-purple-50/50 border border-purple-100">
                   <div className="flex items-center gap-4">
                     <MexoAvatar name={displayName} src={profile?.avatar_url} size="xl" className="border-2 border-white shadow-mexo-md" />
                     <div>
@@ -146,24 +149,24 @@ export const AppSettingsPage: React.FC = () => {
                   </div>
 
                   <MexoButton
-                    id="manage-mexo-mail-profile"
+                    id="manage-mexo-account-btn"
                     variant="primary"
                     size="sm"
-                    leftIcon={<ExternalLink className="w-3.5 h-3.5" />}
-                    onClick={() => window.open(mailUrl, '_blank')}
+                    leftIcon={<User className="w-3.5 h-3.5" />}
+                    onClick={() => navigate('/account')}
                   >
-                    Edit Profile in MEXO Mail
+                    Manage MEXO Account
                   </MexoButton>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div className="p-4 rounded-2xl border border-app-border">
-                    <p className="text-xs font-bold text-app-heading mb-1">Role & Permissions</p>
-                    <p className="text-xs text-app-muted capitalize">{profile?.role || 'Standard User'}</p>
+                  <div className="p-4 rounded-2xl border border-app-border cursor-pointer hover:border-[#7C3AED] transition-colors" onClick={() => navigate('/account/personal-info')}>
+                    <p className="text-xs font-bold text-app-heading mb-1">Personal Information</p>
+                    <p className="text-xs text-app-muted">Name, photo, recovery email & personal data →</p>
                   </div>
-                  <div className="p-4 rounded-2xl border border-app-border">
-                    <p className="text-xs font-bold text-app-heading mb-1">Account Status</p>
-                    <p className="text-xs text-emerald-600 font-semibold capitalize">{profile?.status || 'Active'}</p>
+                  <div className="p-4 rounded-2xl border border-app-border cursor-pointer hover:border-[#7C3AED] transition-colors" onClick={() => navigate('/account/security')}>
+                    <p className="text-xs font-bold text-app-heading mb-1">Security & Password</p>
+                    <p className="text-xs text-app-muted">Change password & manage credentials →</p>
                   </div>
                 </div>
               </div>

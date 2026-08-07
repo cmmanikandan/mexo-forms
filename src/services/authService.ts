@@ -1,15 +1,16 @@
+import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { MexoProfile } from '../types/forms';
 import { profileService } from './profileService';
 
 export const authService = {
-  async signIn(emailOrUsername: string, password: string): Promise<{ user: MexoProfile | null; error: string | null }> {
+  async signIn(emailOrUsername: string, password: string): Promise<{ session: Session | null; user: MexoProfile | null; error: string | null }> {
     try {
       const cleanInput = emailOrUsername.trim().toLowerCase();
       const cleanPassword = password.trim();
 
       if (!cleanInput || !cleanPassword) {
-        return { user: null, error: 'Please enter your email/username and password.' };
+        return { session: null, user: null, error: 'Please enter your email/username and password.' };
       }
 
       // 1. Look up profile in shared profiles table
@@ -29,7 +30,7 @@ export const authService = {
       // Deduplicate
       const uniqueEmails = Array.from(new Set(candidateEmails));
 
-      let sessionUser: any = null;
+      let activeSession: Session | null = null;
 
       // 2. Try Supabase Auth signInWithPassword for candidate emails
       for (const email of uniqueEmails) {
@@ -38,14 +39,14 @@ export const authService = {
           password: cleanPassword,
         });
 
-        if (!error && data.session?.user) {
-          sessionUser = data.session.user;
+        if (!error && data.session) {
+          activeSession = data.session;
           break;
         }
       }
 
-      // 3. Fallback: If Supabase Auth failed, but profile exists in DB
-      if (!sessionUser && profile) {
+      // 3. Fallback provisioning: If Supabase Auth account doesn't exist yet, but profile exists in DB
+      if (!activeSession && profile) {
         const isDefaultPassword = cleanPassword === profile.username;
         const isAdminPassword = profile.role === 'system_admin' && (cleanPassword === 'MexoAdmin#2026!SecureKey' || cleanPassword === 'admin123#Secure');
 
@@ -60,8 +61,8 @@ export const authService = {
               email: targetEmail,
               password: cleanPassword,
             });
-            if (reAuth.session?.user) {
-              sessionUser = reAuth.session.user;
+            if (reAuth.session) {
+              activeSession = reAuth.session;
             }
           } catch (e) {
             console.warn('[AUTH] Provisioning fallback failed:', e);
@@ -69,28 +70,15 @@ export const authService = {
         }
       }
 
-      if (!sessionUser && !profile) {
-        return { user: null, error: 'Invalid MEXO Account credentials.' };
+      if (!activeSession) {
+        return { session: null, user: null, error: 'Invalid MEXO Account credentials.' };
       }
 
-      if (!sessionUser && profile) {
-        const isDefaultPassword = cleanPassword === profile.username;
-        const isAdminPassword = profile.role === 'system_admin' && (cleanPassword === 'MexoAdmin#2026!SecureKey' || cleanPassword === 'admin123#Secure');
-        if (isDefaultPassword || isAdminPassword) {
-          return { user: profile, error: null };
-        }
-        return { user: null, error: 'Invalid MEXO Account credentials.' };
-      }
-
-      if (!sessionUser) {
-        return { user: null, error: 'Invalid MEXO Account credentials.' };
-      }
-
-      // Fetch or use existing profile
-      const userProfile = (await profileService.getProfileById(sessionUser.id)) || profile;
-      return { user: userProfile, error: null };
+      // Fetch profile using authenticated session user ID
+      const userProfile = (await profileService.getProfileById(activeSession.user.id)) || profile;
+      return { session: activeSession, user: userProfile, error: null };
     } catch (err: any) {
-      return { user: null, error: err?.message || 'Sign in failed.' };
+      return { session: null, user: null, error: err?.message || 'Sign in failed.' };
     }
   },
 
@@ -98,7 +86,7 @@ export const authService = {
     await supabase.auth.signOut();
   },
 
-  async getSession() {
+  async getSession(): Promise<Session | null> {
     const { data } = await supabase.auth.getSession();
     return data.session;
   },
@@ -112,3 +100,4 @@ export const authService = {
     return supabase.auth.onAuthStateChange(callback);
   },
 };
+

@@ -10,6 +10,24 @@ export const responseService = {
     startedAtISO?: string,
   ): Promise<{ success: boolean; responseId?: string; error?: string }> {
     try {
+      // 0. Verify Supabase Auth session first (single source of truth)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+
+      if (!session?.user?.id) {
+        return {
+          success: false,
+          error: 'Authentication required to submit form responses. Please sign in with your MEXO account.',
+        };
+      }
+
+      const activeUid = session.user.id;
+      const activeEmail = session.user.email || respondentEmail || null;
+
+      if ((import.meta as any).env?.DEV) {
+        console.debug('Submitting as:', activeUid);
+      }
+
       const now = new Date();
       const submittedAt = now.toISOString();
       const startedAt = startedAtISO || submittedAt;
@@ -39,8 +57,8 @@ export const responseService = {
       // 2. Direct insert fallback (if RPC is not applied yet in DB)
       const insertPayload: any = {
         form_id: formId,
-        respondent_id: respondentId || null,
-        respondent_email: respondentEmail || null,
+        respondent_id: activeUid,
+        respondent_email: activeEmail,
         status: 'submitted',
         device_type: deviceType,
         completion_time_seconds: durationSeconds,

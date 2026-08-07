@@ -15,6 +15,7 @@ import { ResponsesListPage } from './pages/responses/ResponsesListPage';
 import { FormSettingsPage } from './pages/forms/FormSettingsPage';
 import { FormSharePage } from './pages/forms/FormSharePage';
 import { AppSettingsPage } from './pages/settings/AppSettingsPage';
+import { AccountPage } from './pages/account/AccountPage';
 import { PublicFormPage } from './pages/public/PublicFormPage';
 import { SplashScreen } from './components/common/SplashScreen';
 import { MexoSkeleton } from './components/common/MexoSkeleton';
@@ -135,6 +136,8 @@ export const App: React.FC = () => {
           <Route path="/templates" element={<ProtectedRoute><TemplatesPage /></ProtectedRoute>} />
           <Route path="/trash" element={<ProtectedRoute><TrashPage /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><AppSettingsPage /></ProtectedRoute>} />
+          <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+          <Route path="/account/*" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
 
           {/* Catch all */}
           <Route path="*" element={<RootIndex />} />

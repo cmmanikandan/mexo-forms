@@ -17,7 +17,7 @@ export const PublicFormPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile, isAuthenticated, isLoading: authLoading, signOut } = useAuth();
+  const { session, profile, isAuthenticated, isLoading: authLoading, signOut } = useAuth();
 
   const [form, setForm] = useState<Form | null>(null);
   useDocumentTitle(form?.title || 'Form');
@@ -71,15 +71,15 @@ export const PublicFormPage: React.FC = () => {
 
       setForm(f);
 
-      // Require MEXO Session for all public form views
-      if (!isAuthenticated || !profile) {
+      // Require valid Supabase Session & MEXO Profile for public form views
+      if (!isAuthenticated || !session?.user?.id || !profile) {
         setLoading(false);
         return;
       }
 
       // Check one attempt per user
       if (f.one_response_per_user) {
-        const hasResponded = await responseService.hasUserResponded(f.id, profile.id, profile.primary_address);
+        const hasResponded = await responseService.hasUserResponded(f.id, session.user.id, profile.primary_address);
         if (hasResponded) {
           setAlreadyResponded(true);
           setLoading(false);
@@ -93,7 +93,7 @@ export const PublicFormPage: React.FC = () => {
     };
 
     load();
-  }, [slug, isAuthenticated, profile, authLoading]);
+  }, [slug, isAuthenticated, session, profile, authLoading]);
 
   // Compute User Initials safely
   const getInitials = (firstName?: string, lastName?: string, email?: string) => {
@@ -114,14 +114,11 @@ export const PublicFormPage: React.FC = () => {
     setSubmitting(true);
     setSubmissionError(null);
 
-    // Calculate exact completion time from when form was loaded
-    const durationSeconds = Math.max(0, Math.round((Date.now() - formStartedAt) / 1000));
-
     try {
       const result = await responseService.submitResponse(
         form.id,
         answers,
-        profile?.id,
+        session?.user?.id || profile?.id,
         profile?.primary_address,
         startedAtISO,
       );
@@ -225,7 +222,7 @@ export const PublicFormPage: React.FC = () => {
   }
 
   // 1. Unauthenticated -> Show clean MEXO authentication-required screen
-  if (!isAuthenticated || !profile) {
+  if (!isAuthenticated || !session?.user?.id || !profile) {
     const currentFormUrl = `/f/${slug}`;
     const signinUrl = `/signin?redirect=${encodeURIComponent(currentFormUrl)}`;
 
@@ -548,12 +545,22 @@ export const PublicFormPage: React.FC = () => {
               <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
               <span>{submissionError}</span>
             </div>
-            <button
-              onClick={() => setSubmissionError(null)}
-              className="px-3 py-1 rounded-xl bg-rose-600 text-white text-[11px] font-bold hover:bg-rose-700 transition-colors shrink-0"
-            >
-              Dismiss
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {(submissionError.includes('Authentication') || submissionError.includes('session') || submissionError.includes('AUTH_SESSION_MISSING')) && (
+                <button
+                  onClick={() => navigate(`/signin?redirect=${encodeURIComponent(`/f/${slug}`)}`)}
+                  className="px-3 py-1 rounded-xl bg-[#7C3AED] text-white text-[11px] font-bold hover:bg-[#6D28D9] transition-colors"
+                >
+                  Sign In Again
+                </button>
+              )}
+              <button
+                onClick={() => setSubmissionError(null)}
+                className="px-3 py-1 rounded-xl bg-rose-600 text-white text-[11px] font-bold hover:bg-rose-700 transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 

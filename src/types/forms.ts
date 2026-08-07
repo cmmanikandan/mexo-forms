@@ -8,6 +8,9 @@ export interface MexoProfile {
   first_name: string;
   last_name: string;
   avatar_url?: string;
+  recovery_email?: string;
+  date_of_birth?: string;
+  gender?: string;
   role: string;
   status: string;
   created_at: string;

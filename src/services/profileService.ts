@@ -42,4 +42,79 @@ export const profileService = {
       .limit(10);
     return (data as MexoProfile[]) || [];
   },
+
+  async updateUserProfile(userId: string, updates: Partial<MexoProfile>): Promise<MexoProfile | null> {
+    try {
+      const dbUpdates: any = { updated_at: new Date().toISOString() };
+      if (updates.first_name !== undefined) dbUpdates.first_name = updates.first_name;
+      if (updates.last_name !== undefined) dbUpdates.last_name = updates.last_name;
+      if (updates.avatar_url !== undefined) dbUpdates.avatar_url = updates.avatar_url;
+      if (updates.recovery_email !== undefined) dbUpdates.recovery_email = updates.recovery_email;
+      if (updates.date_of_birth !== undefined) dbUpdates.date_of_birth = updates.date_of_birth;
+      if (updates.gender !== undefined) dbUpdates.gender = updates.gender;
+      if (updates.role !== undefined) dbUpdates.role = updates.role;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(dbUpdates)
+        .eq('id', userId)
+        .select('*')
+        .single();
+
+      if (error || !data) {
+        console.error('[PROFILE] Error updating profile:', error);
+        return null;
+      }
+      return data as MexoProfile;
+    } catch (e) {
+      console.error('[PROFILE] Exception updating profile:', e);
+      return null;
+    }
+  },
+
+  async updateUserPassword(newPassword: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      let { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.user) {
+        const { data: refreshed } = await supabase.auth.refreshSession();
+        sessionData = refreshed as any;
+      }
+
+      if (!sessionData?.session?.user) {
+        return { success: false, error: 'Session expired. Please sign in again.' };
+      }
+
+      let rpcSucceeded = false;
+      try {
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('update_user_password', {
+          p_new_password: newPassword,
+        });
+
+        if (!rpcError && (rpcResult as any)?.success === true) {
+          rpcSucceeded = true;
+        }
+      } catch (e) {
+        /* ignore */
+      }
+
+      let authUpdateSucceeded = false;
+      try {
+        const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+        if (!updateError) {
+          authUpdateSucceeded = true;
+        }
+      } catch (e) {
+        /* ignore */
+      }
+
+      if (rpcSucceeded || authUpdateSucceeded) {
+        return { success: true };
+      }
+
+      return { success: false, error: 'Unable to update password. Please re-authenticate and try again.' };
+    } catch (err: any) {
+      return { success: false, error: err?.message || 'Failed to update password.' };
+    }
+  },
 };
+

@@ -111,22 +111,29 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onHamburger, onSearch }) =
               <div className="flex flex-col items-center text-center px-5 py-5 border-b border-app-border bg-slate-50/50">
                 <MexoAvatar name={displayName} src={profile?.avatar_url} size="lg" className="w-14 h-14 text-xl mb-3 border-2 border-white shadow-mexo-md" />
                 <p className="font-bold text-sm text-app-heading">{displayName}</p>
-                <p className="text-xs text-app-primary font-mono mt-0.5 truncate max-w-full">{profile?.primary_address}</p>
+                <p className="text-xs text-[#7C3AED] font-mono font-semibold mt-0.5 truncate max-w-full">{profile?.primary_address}</p>
                 <button
-                  onClick={() => navigate('/settings')}
-                  className="mt-3 px-4 py-1.5 rounded-full border border-app-border text-xs font-semibold text-app-heading hover:bg-slate-100 transition-colors"
+                  onClick={() => navigate('/account')}
+                  className="mt-3 px-4 py-1.5 rounded-full border border-app-border text-xs font-semibold text-app-heading hover:bg-slate-100 transition-colors shadow-2xs"
                 >
-                  MEXO Account Settings
+                  Manage MEXO Account
                 </button>
               </div>
 
               <div className="p-2 space-y-0.5">
                 <DropdownMenu.Item
+                  onClick={() => navigate('/account')}
+                  className="flex items-center px-3 py-2.5 text-xs font-semibold text-app-body rounded-xl hover:bg-slate-100 cursor-pointer outline-none"
+                >
+                  <User className="w-4 h-4 mr-2.5 text-[#7C3AED]" />
+                  MEXO Account
+                </DropdownMenu.Item>
+                <DropdownMenu.Item
                   onClick={() => navigate('/settings')}
                   className="flex items-center px-3 py-2.5 text-xs font-semibold text-app-body rounded-xl hover:bg-slate-100 cursor-pointer outline-none"
                 >
                   <Settings className="w-4 h-4 mr-2.5 text-app-muted" />
-                  Settings
+                  Forms App Settings
                 </DropdownMenu.Item>
               </div>
 
