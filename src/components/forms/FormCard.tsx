@@ -87,8 +87,8 @@ export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }
                     <Edit2 className="w-3.5 h-3.5 mr-2 text-app-muted" /> Edit
                   </DropdownMenu.Item>
                   <DropdownMenu.Item
-                    onSelect={() => setShareOpen(true)}
-                    onClick={(e) => { e.stopPropagation(); setShareOpen(true); }}
+                    onSelect={() => navigate(`/forms/${form.id}/share`)}
+                    onClick={(e) => { e.stopPropagation(); navigate(`/forms/${form.id}/share`); }}
                     className="flex items-center px-3 py-2 rounded-xl text-app-body hover:bg-indigo-50 hover:text-[#7C3AED] cursor-pointer outline-none font-bold"
                   >
                     <Share2 className="w-3.5 h-3.5 mr-2 text-[#7C3AED]" /> Share & QR Code

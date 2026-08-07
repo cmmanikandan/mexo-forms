@@ -13,6 +13,7 @@ import { LandingPage } from './pages/landing/LandingPage';
 import { ResponsesPage } from './pages/responses/ResponsesPage';
 import { ResponsesListPage } from './pages/responses/ResponsesListPage';
 import { FormSettingsPage } from './pages/forms/FormSettingsPage';
+import { FormSharePage } from './pages/forms/FormSharePage';
 import { AppSettingsPage } from './pages/settings/AppSettingsPage';
 import { PublicFormPage } from './pages/public/PublicFormPage';
 import { SplashScreen } from './components/common/SplashScreen';
@@ -125,6 +126,7 @@ export const App: React.FC = () => {
           <Route path="/forms/:id/edit" element={<ProtectedRoute><BuilderPage /></ProtectedRoute>} />
           <Route path="/forms/:id/responses" element={<ProtectedRoute><ResponsesPage /></ProtectedRoute>} />
           <Route path="/forms/:id/settings" element={<ProtectedRoute><FormSettingsPage /></ProtectedRoute>} />
+          <Route path="/forms/:id/share" element={<ProtectedRoute><FormSharePage /></ProtectedRoute>} />
           <Route path="/responses" element={<ProtectedRoute><ResponsesListPage /></ProtectedRoute>} />
           <Route path="/starred" element={<ProtectedRoute><StarredPage /></ProtectedRoute>} />
           <Route path="/shared" element={<ProtectedRoute><SharedPage /></ProtectedRoute>} />

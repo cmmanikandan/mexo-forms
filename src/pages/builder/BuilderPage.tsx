@@ -200,7 +200,7 @@ export const BuilderPage: React.FC = () => {
             variant="ghost"
             size="sm"
             leftIcon={<Share2 className="w-4 h-4 text-[#7C3AED]" />}
-            onClick={() => setShareOpen(true)}
+            onClick={() => navigate(`/forms/${id}/share`)}
           >
             <span className="hidden sm:inline">Share</span>
           </MexoButton>
