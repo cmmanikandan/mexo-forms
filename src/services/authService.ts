@@ -216,7 +216,7 @@ export const authService = {
   },
 
   async getSession(): Promise<Session | null> {
-    // Single source of truth: Active Supabase Auth session
+    // 1. Try active Supabase Auth session first
     try {
       const { data, error } = await supabase.auth.getSession();
       if (!error && data?.session?.user?.id) {
@@ -227,6 +227,17 @@ export const authService = {
         const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
         if (!refreshErr && refreshData?.session?.user?.id) {
           return refreshData.session;
+        }
+      }
+    } catch (e) {}
+
+    // 2. Check saved session fallback in localStorage for persistent refresh
+    try {
+      const savedSessionStr = localStorage.getItem('mexo_auth_session');
+      if (savedSessionStr) {
+        const savedSession = JSON.parse(savedSessionStr) as Session;
+        if (savedSession?.user?.id) {
+          return savedSession;
         }
       }
     } catch (e) {}

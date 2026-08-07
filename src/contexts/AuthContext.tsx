@@ -64,11 +64,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setAuthStatus('authenticated');
         try {
           localStorage.setItem('mexo_auth_profile', JSON.stringify(p));
+          localStorage.setItem('mexo_auth_session', JSON.stringify(currentSession));
         } catch (e) {}
       } catch (e) {
         console.error('[AUTH] Profile fetch error:', e);
         setProfile(null);
         setAuthStatus('authenticated');
+        try {
+          localStorage.setItem('mexo_auth_session', JSON.stringify(currentSession));
+        } catch (err) {}
       }
     } else {
       setSession(null);
