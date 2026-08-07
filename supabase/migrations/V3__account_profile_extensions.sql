@@ -1,7 +1,5 @@
--- =============================================
--- MEXO Ecosystem V3 Account Profile Extensions
--- Project: vnbixduiwsvepvtybygy
--- =============================================
+-- 0. Enable pgcrypto extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 
 -- 1. Ensure public.profiles table has recovery_email, date_of_birth, gender columns
 ALTER TABLE public.profiles
@@ -24,6 +22,7 @@ SET search_path = public, auth, extensions
 AS $$
 DECLARE
   v_user_id UUID;
+  v_encrypted TEXT;
 BEGIN
   v_user_id := auth.uid();
   IF v_user_id IS NULL THEN
@@ -34,8 +33,15 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'Password must be at least 6 characters.');
   END IF;
 
+  -- Use extensions.crypt with bcrypt cost factor 10 matching GoTrue
+  BEGIN
+    v_encrypted := extensions.crypt(p_new_password, extensions.gen_salt('bf', 10));
+  EXCEPTION WHEN OTHERS THEN
+    v_encrypted := crypt(p_new_password, gen_salt('bf', 10));
+  END;
+
   UPDATE auth.users
-  SET encrypted_password = crypt(p_new_password, gen_salt('bf')),
+  SET encrypted_password = v_encrypted,
       updated_at = NOW()
   WHERE id = v_user_id;
 

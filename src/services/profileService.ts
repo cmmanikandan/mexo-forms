@@ -84,31 +84,27 @@ export const profileService = {
         return { success: false, error: 'Session expired. Please sign in again.' };
       }
 
-      let rpcSucceeded = false;
+      // 1. Try native Supabase Auth password update (GoTrue native)
+      try {
+        const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+        if (!updateError) {
+          return { success: true };
+        }
+      } catch (e) {
+        /* fallback to RPC */
+      }
+
+      // 2. Fallback to RPC function if auth.updateUser was unavailable
       try {
         const { data: rpcResult, error: rpcError } = await supabase.rpc('update_user_password', {
           p_new_password: newPassword,
         });
 
         if (!rpcError && (rpcResult as any)?.success === true) {
-          rpcSucceeded = true;
+          return { success: true };
         }
       } catch (e) {
         /* ignore */
-      }
-
-      let authUpdateSucceeded = false;
-      try {
-        const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-        if (!updateError) {
-          authUpdateSucceeded = true;
-        }
-      } catch (e) {
-        /* ignore */
-      }
-
-      if (rpcSucceeded || authUpdateSucceeded) {
-        return { success: true };
       }
 
       return { success: false, error: 'Unable to update password. Please re-authenticate and try again.' };
