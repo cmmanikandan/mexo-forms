@@ -14,7 +14,7 @@ import { MexoSkeleton } from '../../components/common/MexoSkeleton';
 import {
   ArrowLeft, Plus, Eye, Globe, Settings, ChevronDown,
   Type, AlignLeft, AtSign, Phone, Hash, Circle,
-  CheckSquare, List, ToggleLeft, Star, Sliders, Calendar, Clock,
+  CheckSquare, List, ToggleLeft, Star, Sliders, Calendar, Clock, Upload, Layers,
 } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
@@ -32,6 +32,8 @@ const QUESTION_TYPES: { type: QuestionType; label: string; icon: React.ReactNode
   { type: 'linear_scale', label: 'Linear Scale', icon: <Sliders className="w-4 h-4" />, group: 'Scale' },
   { type: 'date', label: 'Date', icon: <Calendar className="w-4 h-4" />, group: 'Date & Time' },
   { type: 'time', label: 'Time', icon: <Clock className="w-4 h-4" />, group: 'Date & Time' },
+  { type: 'file_upload', label: 'File Upload', icon: <Upload className="w-4 h-4" />, group: 'Basic' },
+  { type: 'page_break', label: 'Page Break (New Page)', icon: <Layers className="w-4 h-4" />, group: 'Page & Layout' },
 ];
 
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -162,7 +164,7 @@ export const BuilderPage: React.FC = () => {
 
   if (!form) return null;
 
-  const groups = ['Basic', 'Choice', 'Scale', 'Date & Time'];
+  const groups = ['Basic', 'Choice', 'Scale', 'Date & Time', 'Page & Layout'];
 
   return (
     <div className="min-h-screen bg-app-bg flex flex-col">

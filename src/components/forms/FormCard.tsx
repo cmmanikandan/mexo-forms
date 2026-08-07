@@ -70,7 +70,7 @@ export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }
               <DropdownMenu.Trigger asChild>
                 <button
                   id={`form-menu-${form.id}`}
-                  className="p-1.5 rounded-xl text-app-muted hover:bg-slate-100 hover:text-app-heading transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                  className="p-1.5 rounded-xl text-app-muted hover:bg-slate-100 hover:text-app-heading transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 sm:focus:opacity-100"
                   aria-label="Form options"
                 >
                   <MoreVertical className="w-4 h-4" />
@@ -83,27 +83,31 @@ export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }
                   onClick={e => e.stopPropagation()}
                 >
                   <DropdownMenu.Item
-                    onClick={() => navigate(`/forms/${form.id}/edit`)}
+                    onSelect={() => navigate(`/forms/${form.id}/edit`)}
+                    onClick={(e) => { e.stopPropagation(); navigate(`/forms/${form.id}/edit`); }}
                     className="flex items-center px-3 py-2 rounded-xl text-app-body hover:bg-slate-100 cursor-pointer outline-none"
                   >
                     <Edit2 className="w-3.5 h-3.5 mr-2 text-app-muted" /> Edit
                   </DropdownMenu.Item>
                   <DropdownMenu.Item
-                    onClick={() => navigate(`/forms/${form.id}/responses`)}
+                    onSelect={() => navigate(`/forms/${form.id}/responses`)}
+                    onClick={(e) => { e.stopPropagation(); navigate(`/forms/${form.id}/responses`); }}
                     className="flex items-center px-3 py-2 rounded-xl text-app-body hover:bg-slate-100 cursor-pointer outline-none"
                   >
                     <BarChart2 className="w-3.5 h-3.5 mr-2 text-app-muted" /> View Responses
                   </DropdownMenu.Item>
                   {form.is_published && (
                     <DropdownMenu.Item
-                      onClick={() => window.open(`/f/${form.slug}`, '_blank')}
+                      onSelect={() => window.open(`/f/${form.slug}`, '_blank')}
+                      onClick={(e) => { e.stopPropagation(); window.open(`/f/${form.slug}`, '_blank'); }}
                       className="flex items-center px-3 py-2 rounded-xl text-app-body hover:bg-slate-100 cursor-pointer outline-none"
                     >
                       <ExternalLink className="w-3.5 h-3.5 mr-2 text-app-muted" /> Open Form
                     </DropdownMenu.Item>
                   )}
                   <DropdownMenu.Item
-                    onClick={handleStar}
+                    onSelect={handleStar}
+                    onClick={(e) => { e.stopPropagation(); handleStar(); }}
                     className="flex items-center px-3 py-2 rounded-xl text-app-body hover:bg-slate-100 cursor-pointer outline-none"
                   >
                     <Star className={`w-3.5 h-3.5 mr-2 ${form.is_starred ? 'text-amber-400 fill-amber-400' : 'text-app-muted'}`} />
@@ -111,7 +115,8 @@ export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }
                   </DropdownMenu.Item>
                   <DropdownMenu.Separator className="h-px bg-app-border my-1" />
                   <DropdownMenu.Item
-                    onClick={() => setDeleteOpen(true)}
+                    onSelect={() => setDeleteOpen(true)}
+                    onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }}
                     className="flex items-center px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 cursor-pointer outline-none"
                   >
                     <Trash2 className="w-3.5 h-3.5 mr-2 text-rose-500" /> Move to Trash

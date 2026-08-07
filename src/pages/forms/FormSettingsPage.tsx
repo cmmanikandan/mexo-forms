@@ -24,9 +24,21 @@ export const FormSettingsPage: React.FC = () => {
     title: '',
     description: '',
     confirmation_message: '',
+    form_type: 'form' as 'form' | 'quiz',
     accepting_responses: true,
     requires_login: false,
     one_response_per_user: false,
+    show_quiz_score: true,
+    show_response_summary: true,
+    show_progress_bar: true,
+    shuffle_questions: false,
+    time_limit_minutes: 0,
+    starts_at: '',
+    ends_at: '',
+    attachment_url: '',
+    attachment_name: '',
+    submission_attachment_url: '',
+    submission_attachment_name: '',
   });
 
   useEffect(() => {
@@ -38,9 +50,21 @@ export const FormSettingsPage: React.FC = () => {
           title: f.title,
           description: f.description || '',
           confirmation_message: f.confirmation_message || 'Thank you for your response!',
-          accepting_responses: f.accepting_responses,
-          requires_login: f.requires_login,
-          one_response_per_user: f.one_response_per_user,
+          form_type: f.form_type || 'form',
+          accepting_responses: f.accepting_responses ?? true,
+          requires_login: f.requires_login ?? false,
+          one_response_per_user: f.one_response_per_user ?? false,
+          show_quiz_score: f.show_quiz_score ?? true,
+          show_response_summary: f.show_response_summary ?? true,
+          show_progress_bar: f.show_progress_bar ?? true,
+          shuffle_questions: f.shuffle_questions ?? false,
+          time_limit_minutes: f.time_limit_minutes ?? 0,
+          starts_at: f.starts_at ? f.starts_at.slice(0, 16) : '',
+          ends_at: f.ends_at ? f.ends_at.slice(0, 16) : '',
+          attachment_url: f.attachment_url || '',
+          attachment_name: f.attachment_name || '',
+          submission_attachment_url: f.submission_attachment_url || '',
+          submission_attachment_name: f.submission_attachment_name || '',
         });
       }
       setLoading(false);
@@ -109,6 +133,29 @@ export const FormSettingsPage: React.FC = () => {
             value={formData.description}
             onChange={e => setFormData(s => ({ ...s, description: e.target.value }))}
           />
+
+          <div>
+            <label className="block text-xs font-semibold text-app-heading mb-1.5">Form Purpose / Mode</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData(s => ({ ...s, form_type: 'form' }))}
+                className={`p-3 rounded-xl border text-left transition-all ${formData.form_type === 'form' ? 'border-[#7C3AED] bg-indigo-50/50 text-[#7C3AED]' : 'border-app-border hover:border-slate-300'}`}
+              >
+                <div className="text-xs font-bold">Standard Form</div>
+                <div className="text-[11px] text-app-muted mt-0.5">Collect feedback, surveys, or registrations</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData(s => ({ ...s, form_type: 'quiz' }))}
+                className={`p-3 rounded-xl border text-left transition-all ${formData.form_type === 'quiz' ? 'border-[#7C3AED] bg-indigo-50/50 text-[#7C3AED]' : 'border-app-border hover:border-slate-300'}`}
+              >
+                <div className="text-xs font-bold">Quiz / Assessment</div>
+                <div className="text-[11px] text-app-muted mt-0.5">Auto-grade questions with correct answers & scores</div>
+              </button>
+            </div>
+          </div>
+
           <MexoTextarea
             label="Confirmation Message"
             rows={2}
@@ -118,14 +165,14 @@ export const FormSettingsPage: React.FC = () => {
           />
         </div>
 
-        {/* Responses */}
+        {/* Responses & Attempts */}
         <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4">
-          <h2 className="text-sm font-bold text-app-heading">Responses</h2>
+          <h2 className="text-sm font-bold text-app-heading">Responses & Attempts</h2>
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold text-app-heading">Accepting responses</p>
-                <p className="text-[11px] text-app-muted mt-0.5">Turn off to temporarily pause submissions</p>
+                <p className="text-[11px] text-app-muted mt-0.5">Turn off to temporarily pause new submissions</p>
               </div>
               <MexoToggle
                 id="setting-accepting-responses"
@@ -136,8 +183,20 @@ export const FormSettingsPage: React.FC = () => {
 
             <div className="flex items-center justify-between gap-4">
               <div>
+                <p className="text-xs font-semibold text-app-heading">Limit to 1 attempt per user</p>
+                <p className="text-[11px] text-app-muted mt-0.5">Prevents respondents from submitting more than once</p>
+              </div>
+              <MexoToggle
+                id="setting-one-per-user"
+                checked={formData.one_response_per_user}
+                onCheckedChange={v => setFormData(s => ({ ...s, one_response_per_user: v }))}
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <div>
                 <p className="text-xs font-semibold text-app-heading">Require MEXO Account login</p>
-                <p className="text-[11px] text-app-muted mt-0.5">Respondents must be signed in to MEXO</p>
+                <p className="text-[11px] text-app-muted mt-0.5">Respondents must sign in to MEXO to submit</p>
               </div>
               <MexoToggle
                 id="setting-requires-login"
@@ -145,17 +204,122 @@ export const FormSettingsPage: React.FC = () => {
                 onCheckedChange={v => setFormData(s => ({ ...s, requires_login: v }))}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Results & Quiz Options */}
+        <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4">
+          <h2 className="text-sm font-bold text-app-heading">Results & Answer Review</h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold text-app-heading">Show score & correct answers after submission</p>
+                <p className="text-[11px] text-app-muted mt-0.5">Displays student score and correct options upon completion</p>
+              </div>
+              <MexoToggle
+                id="setting-show-quiz-score"
+                checked={formData.show_quiz_score}
+                onCheckedChange={v => setFormData(s => ({ ...s, show_quiz_score: v }))}
+              />
+            </div>
 
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold text-app-heading">Limit to 1 response per user</p>
-                <p className="text-[11px] text-app-muted mt-0.5">Requires respondents to be logged in</p>
+                <p className="text-xs font-semibold text-app-heading">Allow viewing response summary</p>
+                <p className="text-[11px] text-app-muted mt-0.5">Allows respondents to review their submitted answers</p>
               </div>
               <MexoToggle
-                id="setting-one-per-user"
-                checked={formData.one_response_per_user}
-                onCheckedChange={v => setFormData(s => ({ ...s, one_response_per_user: v }))}
+                id="setting-show-response-summary"
+                checked={formData.show_response_summary}
+                onCheckedChange={v => setFormData(s => ({ ...s, show_response_summary: v }))}
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Quiz Timer & Schedule */}
+        <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4">
+          <h2 className="text-sm font-bold text-app-heading">Timer & Schedule Expiration</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-app-heading mb-1">Quiz Time Limit (Minutes)</label>
+              <input
+                type="number"
+                min={0}
+                value={formData.time_limit_minutes}
+                onChange={e => setFormData(s => ({ ...s, time_limit_minutes: Number(e.target.value) }))}
+                placeholder="0 (Unlimited)"
+                className="w-full rounded-xl border border-app-border px-3 py-2.5 text-xs text-app-heading outline-none focus:border-[#7C3AED] bg-white"
+              />
+              <p className="text-[11px] text-app-muted mt-1">Set countdown timer in minutes for quiz attempts (0 = no time limit)</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-app-heading mb-1">Open Date & Time (Starts At)</label>
+                <input
+                  type="datetime-local"
+                  value={formData.starts_at}
+                  onChange={e => setFormData(s => ({ ...s, starts_at: e.target.value }))}
+                  className="w-full rounded-xl border border-app-border px-3 py-2 text-xs text-app-heading outline-none focus:border-[#7C3AED] bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-app-heading mb-1">Expiration Date & Time (Ends At)</label>
+                <input
+                  type="datetime-local"
+                  value={formData.ends_at}
+                  onChange={e => setFormData(s => ({ ...s, ends_at: e.target.value }))}
+                  className="w-full rounded-xl border border-app-border px-3 py-2 text-xs text-app-heading outline-none focus:border-[#7C3AED] bg-white"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Attachments & Downloadable Resources */}
+        <div className="bg-white rounded-2xl border border-app-border p-6 space-y-4">
+          <h2 className="text-sm font-bold text-app-heading">Attachments & Resources</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-app-heading mb-1">Header Attachment Name & URL</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  value={formData.attachment_name}
+                  onChange={e => setFormData(s => ({ ...s, attachment_name: e.target.value }))}
+                  placeholder="e.g. Form Instructions PDF"
+                  className="w-full rounded-xl border border-app-border px-3 py-2 text-xs text-app-heading outline-none focus:border-[#7C3AED] bg-white"
+                />
+                <input
+                  type="url"
+                  value={formData.attachment_url}
+                  onChange={e => setFormData(s => ({ ...s, attachment_url: e.target.value }))}
+                  placeholder="https://example.com/file.pdf"
+                  className="w-full rounded-xl border border-app-border px-3 py-2 text-xs text-app-heading outline-none focus:border-[#7C3AED] bg-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-app-heading mb-1">Post-Submission Downloadable Resource (Answer Key / Study Material)</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  value={formData.submission_attachment_name}
+                  onChange={e => setFormData(s => ({ ...s, submission_attachment_name: e.target.value }))}
+                  placeholder="e.g. Quiz Answer Key & Solutions"
+                  className="w-full rounded-xl border border-app-border px-3 py-2 text-xs text-app-heading outline-none focus:border-[#7C3AED] bg-white"
+                />
+                <input
+                  type="url"
+                  value={formData.submission_attachment_url}
+                  onChange={e => setFormData(s => ({ ...s, submission_attachment_url: e.target.value }))}
+                  placeholder="https://example.com/answers.pdf"
+                  className="w-full rounded-xl border border-app-border px-3 py-2 text-xs text-app-heading outline-none focus:border-[#7C3AED] bg-white"
+                />
+              </div>
             </div>
           </div>
         </div>

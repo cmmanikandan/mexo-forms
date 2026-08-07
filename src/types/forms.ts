@@ -32,7 +32,9 @@ export type QuestionType =
   | 'rating'
   | 'linear_scale'
   | 'date'
-  | 'time';
+  | 'time'
+  | 'file_upload'
+  | 'page_break';
 
 export interface Form {
   id: string;
@@ -47,6 +49,16 @@ export interface Form {
   requires_login: boolean;
   one_response_per_user: boolean;
   confirmation_message?: string;
+  show_quiz_score?: boolean;
+  show_response_summary?: boolean;
+  show_progress_bar?: boolean;
+  shuffle_questions?: boolean;
+  time_limit_minutes?: number;
+  passing_score_percentage?: number;
+  attachment_url?: string;
+  attachment_name?: string;
+  submission_attachment_url?: string;
+  submission_attachment_name?: string;
   starts_at?: string;
   ends_at?: string;
   is_starred?: boolean;
@@ -74,6 +86,7 @@ export interface FormQuestion {
   question_type: QuestionType;
   required: boolean;
   position: number;
+  explanation?: string;
   settings: Record<string, any>;
   created_at: string;
   updated_at: string;

@@ -25,10 +25,10 @@ export const ResponseSummaryTab: React.FC<ResponseSummaryTabProps> = ({
             <ResponsiveContainer width="100%" height={160}>
               <LineChart data={analytics.trend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f4f8" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={d => d.slice(5)} />
+                <XAxis dataKey="label" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                 <Tooltip labelFormatter={l => `Date: ${l}`} />
-                <Line type="monotone" dataKey="count" stroke="#7C3AED" strokeWidth={2} dot={{ fill: '#7C3AED', r: 3 }} />
+                <Line type="monotone" dataKey="count" stroke="#7C3AED" strokeWidth={2.5} dot={{ fill: '#7C3AED', r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>

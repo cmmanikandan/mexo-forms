@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Form, FormQuestion, FormOption } from '../../types/forms';
-import { Star, ChevronDown } from 'lucide-react';
+import { Star, ChevronDown, Clock, AlertTriangle, Paperclip, Upload, X } from 'lucide-react';
 
 interface PublicFormRendererProps {
   form: Form;
@@ -15,17 +15,134 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
 }) => {
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
+  const [displayQuestions, setDisplayQuestions] = useState<FormQuestion[]>(questions);
+
+  // Quiz Timer State
+  const timeLimitSec = (form.time_limit_minutes || 0) * 60;
+  const [timeLeftSec, setTimeLeftSec] = useState<number | null>(timeLimitSec > 0 ? timeLimitSec : null);
+
+  useEffect(() => {
+    if (form.shuffle_questions && questions.length > 1) {
+      const shuffled = [...questions].sort(() => Math.random() - 0.5);
+      setDisplayQuestions(shuffled);
+    } else {
+      setDisplayQuestions(questions);
+    }
+  }, [questions, form.shuffle_questions]);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (isPreview || !timeLeftSec || timeLeftSec <= 0) return;
+
+    const timer = setInterval(() => {
+      setTimeLeftSec(prev => {
+        if (!prev || prev <= 1) {
+          clearInterval(timer);
+          // Auto submit when time expires
+          handleAutoSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timeLeftSec, isPreview]);
+
+  const formatTimer = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   const setAnswer = useCallback((questionId: string, value: any) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
     setErrors(prev => { const e = { ...prev }; delete e[questionId]; return e; });
   }, []);
 
-  const validate = () => {
+  const answeredCount = questions.filter(q => {
+    const a = answers[q.id];
+    return a !== undefined && a !== null && a !== '' && (!Array.isArray(a) || a.length > 0);
+  }).length;
+  const progressPercent = questions.length > 0 ? Math.round((answeredCount / questions.length) * 100) : 0;
+
+  // Group questions into pages by page_break
+  const pages = React.useMemo(() => {
+    interface FormPage {
+      pageIndex: number;
+      title?: string;
+      description?: string;
+      questions: FormQuestion[];
+    }
+
+    const result: FormPage[] = [];
+    let current: FormPage = { pageIndex: 1, questions: [] };
+
+    displayQuestions.forEach(q => {
+      if (q.question_type === 'page_break') {
+        if (current.questions.length > 0 || result.length > 0) {
+          result.push(current);
+        }
+        current = {
+          pageIndex: result.length + 1,
+          title: q.question_text || `Section ${result.length + 2}`,
+          description: q.description,
+          questions: [],
+        };
+      } else {
+        current.questions.push(q);
+      }
+    });
+
+    if (current.questions.length > 0 || result.length === 0) {
+      result.push(current);
+    }
+
+    return result;
+  }, [displayQuestions]);
+
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
+
+  const validatePage = (pageQuestions: FormQuestion[]) => {
+    const newErrors: Record<string, string> = {};
+    pageQuestions.forEach(q => {
+      if (q.required) {
+        const ans = answers[q.id];
+        if (!ans || (Array.isArray(ans) && ans.length === 0) || (typeof ans === 'string' && !ans.trim())) {
+          newErrors[q.id] = 'This field is required.';
+        }
+      }
+    });
+    setErrors(prev => ({ ...prev, ...newErrors }));
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleNextPage = () => {
+    const currentQuestions = pages[currentPageIndex]?.questions || [];
+    if (!validatePage(currentQuestions)) {
+      const firstErr = currentQuestions.find(q => q.required && !answers[q.id]);
+      if (firstErr) {
+        document.getElementById(`public-q-${firstErr.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    if (currentPageIndex < pages.length - 1) {
+      setCurrentPageIndex(prev => prev + 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPageIndex > 0) {
+      setCurrentPageIndex(prev => prev - 1);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const validateAll = () => {
     const newErrors: Record<string, string> = {};
     questions.forEach(q => {
-      if (q.required) {
+      if (q.required && q.question_type !== 'page_break') {
         const ans = answers[q.id];
         if (!ans || (Array.isArray(ans) && ans.length === 0) || (typeof ans === 'string' && !ans.trim())) {
           newErrors[q.id] = 'This field is required.';
@@ -36,17 +153,37 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleAutoSubmit = async () => {
+    alert('Time is up! Your responses are being automatically submitted.');
+    const payload = questions.filter(q => q.question_type !== 'page_break').map(q => {
+      const ans = answers[q.id];
+      const isJson = Array.isArray(ans) || (typeof ans === 'object' && ans !== null);
+      return {
+        question_id: q.id,
+        answer_text: isJson ? undefined : String(ans ?? ''),
+        answer_json: isJson ? ans : undefined,
+      };
+    });
+    await onSubmit?.(payload);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isPreview) return;
-    if (!validate()) {
-      // Scroll to first error
-      const firstErr = Object.keys(errors)[0];
-      document.getElementById(`public-q-${firstErr}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!validateAll()) {
+      const firstErr = questions.find(q => q.required && !answers[q.id]);
+      if (firstErr) {
+        // Find page of error
+        const errPageIndex = pages.findIndex(p => p.questions.some(q => q.id === firstErr.id));
+        if (errPageIndex !== -1) setCurrentPageIndex(errPageIndex);
+        setTimeout(() => {
+          document.getElementById(`public-q-${firstErr.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
       return;
     }
 
-    const payload = questions.map(q => {
+    const payload = questions.filter(q => q.question_type !== 'page_break').map(q => {
       const ans = answers[q.id];
       const isJson = Array.isArray(ans) || (typeof ans === 'object' && ans !== null);
       return {
@@ -59,28 +196,119 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
     await onSubmit?.(payload);
   };
 
+  const currentQuestions = pages[currentPageIndex]?.questions || [];
+
   return (
-    <div className="min-h-full">
+    <div className="min-h-full relative">
+      {/* Sticky Quiz Timer Banner */}
+      {timeLeftSec !== null && !isPreview && (
+        <div className={`sticky top-0 z-40 px-6 py-2.5 flex items-center justify-between text-xs font-bold shadow-md transition-colors ${
+          timeLeftSec < 120 ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-900 text-white'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4" />
+            <span>Quiz Timer</span>
+          </div>
+          <div className="flex items-center gap-1 text-sm font-mono tracking-wider">
+            {timeLeftSec < 120 && <AlertTriangle className="w-4 h-4 text-amber-300" />}
+            Time Remaining: {formatTimer(timeLeftSec)}
+          </div>
+        </div>
+      )}
+
       {/* Form header */}
       <div className="border-b border-app-border">
         <div className="h-1.5 bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8] rounded-t-2xl" />
         <div className="px-6 sm:px-8 py-6">
-          <h1 className="text-xl sm:text-2xl font-extrabold text-app-heading">{form.title}</h1>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-xl sm:text-2xl font-extrabold text-app-heading">{form.title}</h1>
+            {form.form_type === 'quiz' && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700">
+                Quiz
+              </span>
+            )}
+          </div>
           {form.description && <p className="text-sm text-app-body mt-2">{form.description}</p>}
+
+          {/* Form Header Attachment */}
+          {form.attachment_url && (
+            <div className="mt-3 p-3 rounded-2xl bg-slate-50 border border-app-border flex items-center gap-3">
+              <Paperclip className="w-4 h-4 text-[#7C3AED] flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-app-heading truncate">{form.attachment_name || 'Form Attachment'}</p>
+                <a
+                  href={form.attachment_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-[11px] text-[#7C3AED] font-bold hover:underline"
+                >
+                  View / Download Attachment →
+                </a>
+              </div>
+            </div>
+          )}
+
           {questions.some(q => q.required) && (
-            <p className="text-xs text-app-muted mt-3">Fields marked with <span className="text-rose-500">*</span> are required.</p>
+            <p className="text-xs text-app-muted mt-3">
+              Fields marked with <span className="text-rose-500 font-bold ml-0.5">*</span> are required.
+            </p>
           )}
         </div>
+
+        {/* Multi-Page Step Progress Header */}
+        {pages.length > 1 && (
+          <div className="bg-indigo-50/70 border-t border-app-border px-6 py-3 flex items-center justify-between gap-4">
+            <div>
+              <span className="text-xs font-extrabold text-[#7C3AED]">
+                Page {currentPageIndex + 1} of {pages.length}
+              </span>
+              {pages[currentPageIndex]?.title && (
+                <h2 className="text-xs font-bold text-app-heading mt-0.5">
+                  {pages[currentPageIndex].title}
+                </h2>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              {pages.map((p, idx) => (
+                <div
+                  key={idx}
+                  className={`h-2 rounded-full transition-all ${
+                    idx === currentPageIndex
+                      ? 'w-6 bg-[#7C3AED]'
+                      : idx < currentPageIndex
+                      ? 'w-2 bg-indigo-300'
+                      : 'w-2 bg-slate-200'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Question Progress bar */}
+        {form.show_progress_bar !== false && questions.length > 0 && (
+          <div className="bg-slate-50 border-t border-app-border px-6 py-2.5 flex items-center justify-between gap-4">
+            <div className="flex-1 bg-slate-200 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8] h-full transition-all duration-300 rounded-full"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+            <span className="text-[11px] font-bold text-app-muted flex-shrink-0">
+              {answeredCount} of {questions.filter(q => q.question_type !== 'page_break').length} answered ({progressPercent}%)
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Questions */}
       <form onSubmit={handleSubmit} noValidate>
         <div className="px-6 sm:px-8 py-6 space-y-6">
-          {questions.map((q, idx) => (
+          {currentQuestions.map((q, idx) => (
             <div key={q.id} id={`public-q-${q.id}`} className="space-y-2">
               <label className="block text-sm font-semibold text-app-heading">
                 {q.question_text}
-                {q.required && <span className="text-rose-500 ml-1">*</span>}
+                {q.required && <span className="text-rose-500 font-bold ml-1">*</span>}
               </label>
               {q.description && <p className="text-xs text-app-muted">{q.description}</p>}
 
@@ -94,35 +322,43 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
             </div>
           ))}
 
-          {/* Submit */}
-          {!isPreview && (
-            <div className="pt-4 border-t border-app-border">
+          {/* Page Navigation & Submit Controls */}
+          <div className="pt-6 border-t border-app-border flex items-center justify-between gap-3">
+            {currentPageIndex > 0 ? (
               <button
-                id="form-submit-btn"
-                type="submit"
-                disabled={submitting}
-                className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 shadow-sm"
+                type="button"
+                onClick={handlePrevPage}
+                className="px-5 py-2.5 rounded-2xl border border-app-border text-sm font-bold text-app-heading hover:bg-slate-50 transition-colors"
               >
-                {submitting ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                    </svg>
-                    Submitting…
-                  </>
-                ) : 'Submit'}
+                ← Back
               </button>
-            </div>
-          )}
+            ) : <div />}
 
-          {isPreview && (
-            <div className="pt-4 border-t border-app-border">
-              <div className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#7C3AED] to-[#0878e8] opacity-60 select-none cursor-default">
-                Submit (Preview)
-              </div>
-            </div>
-          )}
+            {currentPageIndex < pages.length - 1 ? (
+              <button
+                type="button"
+                onClick={handleNextPage}
+                className="px-6 py-2.5 rounded-2xl font-bold text-sm text-white bg-[#7C3AED] hover:bg-[#6D28D9] transition-colors shadow-sm"
+              >
+                Next Page →
+              </button>
+            ) : (
+              !isPreview ? (
+                <button
+                  id="form-submit-btn"
+                  type="submit"
+                  disabled={submitting}
+                  className="flex items-center justify-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#7C3AED] via-[#6366F1] to-[#0878e8] hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 shadow-sm"
+                >
+                  {submitting ? 'Submitting…' : 'Submit'}
+                </button>
+              ) : (
+                <div className="px-6 py-3 rounded-2xl font-bold text-sm text-white bg-gradient-to-r from-[#7C3AED] to-[#0878e8] opacity-60">
+                  Submit (Preview)
+                </div>
+              )
+            )}
+          </div>
         </div>
       </form>
 
@@ -372,6 +608,44 @@ const PublicQuestionInput: React.FC<PublicQuestionInputProps> = ({ question, val
             <div className="flex justify-between mt-1.5 text-[11px] text-app-muted">
               <span>{question.settings?.min_label}</span>
               <span>{question.settings?.max_label}</span>
+            </div>
+          )}
+        </div>
+        {error && <p className="text-[11px] text-rose-600 mt-1">{error}</p>}
+      </>
+    );
+  }
+
+  if (type === 'file_upload') {
+    return (
+      <>
+        <div className="space-y-2">
+          <label className="flex flex-col items-center justify-center border-2 border-dashed border-app-border hover:border-indigo-300 rounded-2xl p-4 cursor-pointer bg-slate-50/50 transition-colors">
+            <Upload className="w-6 h-6 text-[#7C3AED] mb-1" />
+            <span className="text-xs font-semibold text-app-heading">
+              {value ? (typeof value === 'string' ? value : value.name) : 'Choose file to attach'}
+            </span>
+            <span className="text-[10px] text-app-muted mt-0.5">Click to browse file</span>
+            <input
+              type="file"
+              disabled={disabled}
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  onChange(file.name);
+                }
+              }}
+              className="hidden"
+            />
+          </label>
+          {value && (
+            <div className="flex items-center justify-between text-xs bg-indigo-50 text-[#7C3AED] px-3 py-2 rounded-xl border border-indigo-100 font-semibold">
+              <span>📎 Attached: {typeof value === 'string' ? value : value.name}</span>
+              {!disabled && (
+                <button type="button" onClick={() => onChange('')} className="text-rose-500 hover:text-rose-700 ml-2">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           )}
         </div>

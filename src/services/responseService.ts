@@ -59,6 +59,22 @@ export const responseService = {
     }
   },
 
+  async hasUserResponded(formId: string, respondentId?: string, respondentEmail?: string): Promise<boolean> {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(`mexo_submitted_${formId}`)) {
+      return true;
+    }
+    if (!respondentId && !respondentEmail) return false;
+
+    let query = supabase.from('form_responses').select('id').eq('form_id', formId).eq('status', 'submitted');
+    if (respondentId) {
+      query = query.eq('respondent_id', respondentId);
+    } else if (respondentEmail) {
+      query = query.eq('respondent_email', respondentEmail);
+    }
+    const { data } = await query;
+    return !!(data && data.length > 0);
+  },
+
   async getResponses(formId: string, page = 0, pageSize = 50): Promise<FormResponse[]> {
     const { data, error } = await supabase
       .from('form_responses')
@@ -109,7 +125,28 @@ export const responseService = {
       .select('submitted_at, started_at, status, device_type, completion_time_seconds')
       .eq('form_id', formId);
 
-    if (!responses || responses.length === 0) {
+    const getLocalDateString = (input: string | Date | undefined | null): string => {
+      if (!input) return '';
+      const d = new Date(input);
+      if (isNaN(d.getTime())) return String(input).slice(0, 10);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    const allResponses = (responses || []) as FormResponse[];
+
+    if (allResponses.length === 0) {
+      const emptyTrend: { date: string; label: string; count: number }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = getLocalDateString(d);
+        const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        emptyTrend.push({ date: dateStr, label, count: 0 });
+      }
+
       return {
         total: 0,
         today: 0,
@@ -120,28 +157,35 @@ export const responseService = {
           { device: 'Mobile', count: 0, percentage: 0 },
           { device: 'Tablet', count: 0, percentage: 0 },
         ],
-        trend: [],
+        trend: emptyTrend,
       };
     }
 
-    const submitted = responses.filter(r => r.status === 'submitted');
+    const submitted = allResponses.filter(r => r.status === 'submitted');
     const total = submitted.length;
-    const todayStr = new Date().toISOString().split('T')[0];
-    const today = submitted.filter(r => r.submitted_at?.startsWith(todayStr)).length;
-    const completionRate = responses.length > 0 ? Math.round((total / responses.length) * 100) : 0;
+    const todayStr = getLocalDateString(new Date());
+    const today = submitted.filter(r => r.submitted_at && getLocalDateString(r.submitted_at) === todayStr).length;
+    const completionRate = allResponses.length > 0 ? Math.round((submitted.length / allResponses.length) * 100) : 0;
 
-    // Average completion time
     const durations = submitted
-      .map(r => r.completion_time_seconds || 0)
+      .map(r => {
+        if (r.completion_time_seconds && r.completion_time_seconds > 0) return r.completion_time_seconds;
+        if (r.started_at && r.submitted_at) {
+          const diff = Math.round((new Date(r.submitted_at).getTime() - new Date(r.started_at).getTime()) / 1000);
+          if (diff > 0 && diff < 86400) return diff;
+        }
+        return 0;
+      })
       .filter(d => d > 0);
+
     const avgCompletionTimeSeconds = durations.length > 0
       ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
-      : 45; // Default estimate if legacy
+      : (submitted.length > 0 ? 45 : 0);
 
-    // Device breakdown
     const deviceCounts: Record<string, number> = { Desktop: 0, Mobile: 0, Tablet: 0 };
     submitted.forEach(r => {
-      const dev = r.device_type || 'Desktop';
+      let dev = r.device_type || 'Desktop';
+      if (!['Desktop', 'Mobile', 'Tablet'].includes(dev)) dev = 'Desktop';
       deviceCounts[dev] = (deviceCounts[dev] || 0) + 1;
     });
 
@@ -151,14 +195,14 @@ export const responseService = {
       percentage: total > 0 ? Math.round((count / total) * 100) : 0,
     }));
 
-    // Trend: last 7 days
-    const trend: { date: string; count: number }[] = [];
+    const trend: { date: string; label: string; count: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const count = submitted.filter(r => r.submitted_at?.startsWith(dateStr)).length;
-      trend.push({ date: dateStr, count });
+      const targetDateStr = getLocalDateString(d);
+      const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      const count = submitted.filter(r => r.submitted_at && getLocalDateString(r.submitted_at) === targetDateStr).length;
+      trend.push({ date: targetDateStr, label, count });
     }
 
     return { total, today, completionRate, avgCompletionTimeSeconds, deviceBreakdown, trend };
