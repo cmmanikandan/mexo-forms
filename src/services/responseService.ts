@@ -50,6 +50,7 @@ export const responseService = {
         p_completion_time_seconds: durationSeconds,
         p_device_type: deviceType,
         p_idempotency_key: idempotencyKey || null,
+        p_respondent_id: activeUid,
       });
 
       if (!rpcError && rpcData) {
