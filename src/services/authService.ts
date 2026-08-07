@@ -84,49 +84,58 @@ export const authService = {
         console.debug('[MEXO AUTH] Sign-in attempt started for:', cleanInput);
       }
 
-      // Step 1: Resolve username (e.g. 927624bit060) to primary MEXO email
+      // Step 1: Resolve primary email & profile
       const resolvedEmail = await this.resolveMexoEmail(cleanInput);
+      let profile: MexoProfile | null = null;
+      try {
+        profile = await profileService.getProfileByIdentifier(cleanInput);
+      } catch (e) {}
+
+      // Step 2: Build candidate email targets
+      const candidates = Array.from(new Set([
+        resolvedEmail,
+        cleanInput.includes('@') ? cleanInput : `${cleanInput}@mexo.com`,
+        profile?.primary_address?.toLowerCase(),
+        cleanInput,
+      ])).filter((c): c is string => !!c && c.trim().length > 0);
 
       if ((import.meta as any).env?.DEV) {
-        console.debug('[MEXO AUTH] Resolved target email:', resolvedEmail);
+        console.debug('[MEXO AUTH] Trying candidate email targets:', candidates);
       }
 
-      // Step 2: Authenticate using supabase.auth.signInWithPassword
-      let res = await supabase.auth.signInWithPassword({
-        email: resolvedEmail,
-        password: cleanPassword,
-      });
+      // Step 3: Sequentially attempt authentication with each candidate
+      let lastError: any = null;
+      for (const emailTarget of candidates) {
+        try {
+          const res = await supabase.auth.signInWithPassword({
+            email: emailTarget,
+            password: cleanPassword,
+          });
 
-      // Step 3: If Attempt 1 failed and cleanInput != resolvedEmail, try cleanInput directly
-      if (res.error && cleanInput !== resolvedEmail.toLowerCase()) {
-        if ((import.meta as any).env?.DEV) {
-          console.debug('[MEXO AUTH] Retrying auth with raw input:', cleanInput);
-        }
-        const retryRes = await supabase.auth.signInWithPassword({
-          email: cleanInput,
-          password: cleanPassword,
-        });
-        if (!retryRes.error && retryRes.data?.session) {
-          res = retryRes;
+          if (!res.error && res.data?.session) {
+            const userProfile = await profileService.getProfileById(res.data.session.user.id) || profile;
+            if ((import.meta as any).env?.DEV) {
+              console.debug('[MEXO AUTH] Login success with target:', emailTarget, 'User ID:', res.data.session.user.id);
+            }
+            return { session: res.data.session, user: userProfile, error: null };
+          }
+
+          if (res.error) {
+            lastError = res.error;
+          }
+        } catch (err: any) {
+          lastError = err;
         }
       }
 
-      if (!res.error && res.data?.session) {
-        const userProfile = await profileService.getProfileById(res.data.session.user.id);
-        if ((import.meta as any).env?.DEV) {
-          console.debug('[MEXO AUTH] Login success. Session active for:', res.data.session.user.id);
-        }
-        return { session: res.data.session, user: userProfile, error: null };
-      }
-
-      const error = res.error;
-      if (error) {
-        const errStatus = error.status || 0;
-        const errMsg = (error.message || '').toLowerCase();
-        const errCode = (((error as any).code) || '').toLowerCase();
+      // Step 4: Handle authentication failures cleanly
+      if (lastError) {
+        const errStatus = lastError.status || 0;
+        const errMsg = (lastError.message || '').toLowerCase();
+        const errCode = (((lastError as any).code) || '').toLowerCase();
 
         if ((import.meta as any).env?.DEV) {
-          console.warn('[MEXO AUTH] Sign-in error details:', { status: errStatus, code: errCode, message: error.message });
+          console.warn('[MEXO AUTH] Sign-in error details:', { status: errStatus, code: errCode, message: lastError.message });
         }
 
         if (
@@ -139,11 +148,11 @@ export const authService = {
         } else if (errStatus === 0 || errMsg.includes('fetch') || errMsg.includes('network')) {
           return { session: null, user: null, error: 'Unable to connect to MEXO Account. Check your connection and try again.', status: 0 };
         } else {
-          return { session: null, user: null, error: normalizeAuthError(error), status: errStatus };
+          return { session: null, user: null, error: normalizeAuthError(lastError), status: errStatus };
         }
       }
 
-      return { session: null, user: null, error: 'Unable to sign in. Please check your MEXO ID and password.' };
+      return { session: null, user: null, error: 'Incorrect MEXO ID or password.' };
     } catch (err: any) {
       return { session: null, user: null, error: normalizeAuthError(err) };
     }
