@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Form } from '../../types/forms';
 import { formService } from '../../services/formService';
 import { MexoConfirmDialog } from '../common/MexoModal';
+import { ShareFormModal } from './ShareFormModal';
 import { FormStatusBadge } from './FormStatusBadge';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import {
-  Edit2, BarChart2, Star, Trash2, Copy, ExternalLink,
-  MoreVertical, Clock, MessageSquare,
+  Edit2, BarChart2, Star, Trash2, ExternalLink,
+  MoreVertical, Clock, MessageSquare, Share2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -20,6 +21,7 @@ interface FormCardProps {
 export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }) => {
   const navigate = useNavigate();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
@@ -34,11 +36,6 @@ export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }
     const newStarred = !form.is_starred;
     await formService.toggleStar(form.id, newStarred);
     onStarred?.(form.id, newStarred);
-  };
-
-  const handleDuplicate = async () => {
-    // Navigate to forms list after duplicate
-    navigate('/forms');
   };
 
   const relativeTime = form.updated_at
@@ -88,6 +85,13 @@ export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }
                     className="flex items-center px-3 py-2 rounded-xl text-app-body hover:bg-slate-100 cursor-pointer outline-none"
                   >
                     <Edit2 className="w-3.5 h-3.5 mr-2 text-app-muted" /> Edit
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item
+                    onSelect={() => setShareOpen(true)}
+                    onClick={(e) => { e.stopPropagation(); setShareOpen(true); }}
+                    className="flex items-center px-3 py-2 rounded-xl text-app-body hover:bg-indigo-50 hover:text-[#7C3AED] cursor-pointer outline-none font-bold"
+                  >
+                    <Share2 className="w-3.5 h-3.5 mr-2 text-[#7C3AED]" /> Share & QR Code
                   </DropdownMenu.Item>
                   <DropdownMenu.Item
                     onSelect={() => navigate(`/forms/${form.id}/responses`)}
@@ -141,6 +145,12 @@ export const FormCard: React.FC<FormCardProps> = ({ form, onDeleted, onStarred }
           )}
         </div>
       </div>
+
+      <ShareFormModal
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        form={form}
+      />
 
       <MexoConfirmDialog
         open={deleteOpen}

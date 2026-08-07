@@ -11,10 +11,11 @@ import { PublishModal } from '../../components/builder/PublishModal';
 import { PreviewModal } from '../../components/builder/PreviewModal';
 import { MexoButton } from '../../components/common/MexoButton';
 import { MexoSkeleton } from '../../components/common/MexoSkeleton';
+import { ShareFormModal } from '../../components/forms/ShareFormModal';
 import {
   ArrowLeft, Plus, Eye, Globe, Settings, ChevronDown,
   Type, AlignLeft, AtSign, Phone, Hash, Circle,
-  CheckSquare, List, ToggleLeft, Star, Sliders, Calendar, Clock, Upload, Layers,
+  CheckSquare, List, ToggleLeft, Star, Sliders, Calendar, Clock, Upload, Layers, Share2,
 } from 'lucide-react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
@@ -50,6 +51,7 @@ export const BuilderPage: React.FC = () => {
   const [selectedQId, setSelectedQId] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [formData, setFormData] = useState<{ title: string; description: string } | null>(null);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -193,6 +195,15 @@ export const BuilderPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <MexoButton
+            id="builder-share"
+            variant="ghost"
+            size="sm"
+            leftIcon={<Share2 className="w-4 h-4 text-[#7C3AED]" />}
+            onClick={() => setShareOpen(true)}
+          >
+            <span className="hidden sm:inline">Share</span>
+          </MexoButton>
           <MexoButton
             id="builder-preview"
             variant="ghost"
@@ -339,6 +350,11 @@ export const BuilderPage: React.FC = () => {
             form={form}
             questions={questions}
             onClose={() => setPreviewOpen(false)}
+          />
+          <ShareFormModal
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            form={form}
           />
         </>
       )}
