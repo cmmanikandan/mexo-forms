@@ -107,8 +107,7 @@ export const responseService = {
     const { data: responses } = await supabase
       .from('form_responses')
       .select('id')
-      .eq('form_id', formId)
-      .eq('status', 'submitted');
+      .eq('form_id', formId);
     if (!responses || responses.length === 0) return [];
 
     const responseIds = responses.map(r => r.id);
@@ -122,7 +121,7 @@ export const responseService = {
   async getAnalytics(formId: string): Promise<ResponseAnalytics> {
     const { data: responses } = await supabase
       .from('form_responses')
-      .select('submitted_at, started_at, status, device_type, completion_time_seconds')
+      .select('submitted_at, created_at, started_at, status, device_type, completion_time_seconds')
       .eq('form_id', formId);
 
     const getLocalDateString = (input: string | Date | undefined | null): string => {
@@ -135,7 +134,7 @@ export const responseService = {
       return `${y}-${m}-${day}`;
     };
 
-    const allResponses = (responses || []) as FormResponse[];
+    const allResponses = (responses || []) as unknown as FormResponse[];
 
     if (allResponses.length === 0) {
       const emptyTrend: { date: string; label: string; count: number }[] = [];
@@ -161,11 +160,17 @@ export const responseService = {
       };
     }
 
-    const submitted = allResponses.filter(r => r.status === 'submitted');
-    const total = submitted.length;
+    const submitted = allResponses.filter(r => !r.status || r.status === 'submitted' || (r.status as string) === 'completed');
+    const total = submitted.length > 0 ? submitted.length : allResponses.length;
     const todayStr = getLocalDateString(new Date());
-    const today = submitted.filter(r => r.submitted_at && getLocalDateString(r.submitted_at) === todayStr).length;
-    const completionRate = allResponses.length > 0 ? Math.round((submitted.length / allResponses.length) * 100) : 0;
+    const getRespDate = (r: any) => r.submitted_at || r.created_at;
+
+    const today = submitted.filter(r => {
+      const dt = getRespDate(r);
+      return dt && getLocalDateString(dt) === todayStr;
+    }).length;
+
+    const completionRate = allResponses.length > 0 ? Math.round((total / allResponses.length) * 100) : 0;
 
     const durations = submitted
       .map(r => {
@@ -201,7 +206,10 @@ export const responseService = {
       d.setDate(d.getDate() - i);
       const targetDateStr = getLocalDateString(d);
       const label = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-      const count = submitted.filter(r => r.submitted_at && getLocalDateString(r.submitted_at) === targetDateStr).length;
+      const count = submitted.filter(r => {
+        const dt = getRespDate(r);
+        return dt && getLocalDateString(dt) === targetDateStr;
+      }).length;
       trend.push({ date: targetDateStr, label, count });
     }
 

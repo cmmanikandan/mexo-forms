@@ -35,13 +35,21 @@ export const formService = {
   },
 
   async getFormBySlug(slug: string): Promise<Form | null> {
+    if (!slug) return null;
     const { data, error } = await supabase
       .from('forms')
       .select('*')
       .eq('slug', slug)
       .single();
-    if (error || !data) return null;
-    return data as Form;
+    if (data && !error) return data as Form;
+
+    // Fallback: check if parameter is form ID
+    const { data: dataById } = await supabase
+      .from('forms')
+      .select('*')
+      .eq('id', slug)
+      .single();
+    return (dataById as Form) || null;
   },
 
   async getUserForms(userId: string): Promise<Form[]> {

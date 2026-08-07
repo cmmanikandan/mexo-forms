@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Form } from '../../types/forms';
 import { MexoModal } from '../common/MexoModal';
-import { Copy, Check, ExternalLink, Download, QrCode, Share2, Code, Mail } from 'lucide-react';
+import {
+  Copy, Check, ExternalLink, Download, QrCode, Share2, Code, Mail,
+  MessageCircle, Send, Globe, GraduationCap,
+} from 'lucide-react';
 
 interface ShareFormModalProps {
   open: boolean;
@@ -16,9 +19,11 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
 
   if (!form) return null;
 
-  const shareUrl = `${window.location.origin}/f/${form.slug}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(shareUrl)}`;
+  const formSlugOrId = form.slug || form.id;
+  const shareUrl = `${window.location.origin}/f/${formSlugOrId}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodeURIComponent(shareUrl)}`;
   const embedCode = `<iframe src="${shareUrl}" width="100%" height="650" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>`;
+  const mexoMailUrl = (import.meta as any).env?.VITE_MEXO_MAIL_URL || 'https://mexo-mail.vercel.app';
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -32,6 +37,12 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
     setTimeout(() => setCopiedEmbed(false), 2500);
   };
 
+  const handleSendMexoMail = () => {
+    const subject = encodeURIComponent(`Fill out form: ${form.title}`);
+    const body = encodeURIComponent(`Hi,\n\nPlease fill out this form:\n${shareUrl}\n\nThank you!`);
+    window.open(`${mexoMailUrl}?compose=1&subject=${subject}&body=${body}`, '_blank');
+  };
+
   const handleDownloadQR = async () => {
     try {
       const resp = await fetch(qrUrl);
@@ -39,7 +50,7 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${form.slug || 'form'}-qr-code.png`;
+      a.download = `${formSlugOrId}-qr-code.png`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -55,12 +66,12 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
       maxWidth="max-w-md"
     >
       <div className="space-y-5">
-        {/* Navigation tabs */}
+        {/* Segmented control tabs */}
         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl">
           <button
             type="button"
             onClick={() => setActiveTab('link')}
-            className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'link' ? 'bg-white text-app-heading shadow-mexo-sm' : 'text-app-muted hover:text-app-body'
             }`}
           >
@@ -69,7 +80,7 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
           <button
             type="button"
             onClick={() => setActiveTab('qr')}
-            className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'qr' ? 'bg-white text-app-heading shadow-mexo-sm' : 'text-app-muted hover:text-app-body'
             }`}
           >
@@ -78,7 +89,7 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
           <button
             type="button"
             onClick={() => setActiveTab('embed')}
-            className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'embed' ? 'bg-white text-app-heading shadow-mexo-sm' : 'text-app-muted hover:text-app-body'
             }`}
           >
@@ -86,22 +97,22 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
           </button>
         </div>
 
-        {/* Tab 1: Link & Social Share */}
+        {/* Tab 1: Link & Quick Share */}
         {activeTab === 'link' && (
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-app-heading mb-1.5">Public Form URL</label>
+              <label className="block text-xs font-bold text-app-heading mb-1.5">Public Form Link</label>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   readOnly
                   value={shareUrl}
-                  className="flex-1 bg-slate-50 border border-app-border rounded-xl px-3 py-2 text-xs font-mono text-app-heading outline-none select-all"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-mono font-semibold text-app-heading outline-none select-all focus:border-[#7C3AED]"
                 />
                 <button
                   type="button"
                   onClick={handleCopyLink}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 flex-shrink-0 ${
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 flex-shrink-0 ${
                     copiedLink ? 'bg-emerald-600 text-white' : 'bg-[#7C3AED] text-white hover:bg-[#6D28D9]'
                   }`}
                 >
@@ -112,38 +123,73 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-app-heading mb-2">Quick Share</label>
-              <div className="grid grid-cols-4 gap-2">
+              <label className="block text-xs font-bold text-app-heading mb-2">Quick Share & Messaging</label>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                 <a
                   href={`https://api.whatsapp.com/send?text=${encodeURIComponent(`Please fill out this form: ${form.title} - ${shareUrl}`)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex flex-col items-center justify-center p-3 rounded-2xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors border border-emerald-200 text-[11px] font-bold gap-1"
+                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition-colors border border-emerald-200 text-[11px] font-bold gap-1 text-center"
                 >
-                  <span className="text-sm">💬</span> WhatsApp
+                  <MessageCircle className="w-4 h-4 text-emerald-600" />
+                  <span>WhatsApp</span>
                 </a>
+
+                <button
+                  type="button"
+                  onClick={handleSendMexoMail}
+                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-purple-50 text-purple-800 hover:bg-purple-100 transition-colors border border-purple-200 text-[11px] font-bold gap-1 text-center"
+                >
+                  <Send className="w-4 h-4 text-[#7C3AED]" />
+                  <span>MEXO Mail</span>
+                </button>
+
                 <a
                   href={`mailto:?subject=${encodeURIComponent(form.title)}&body=${encodeURIComponent(`Please fill out this form:\n\n${shareUrl}`)}`}
-                  className="flex flex-col items-center justify-center p-3 rounded-2xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors border border-blue-200 text-[11px] font-bold gap-1"
+                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-blue-50 text-blue-800 hover:bg-blue-100 transition-colors border border-blue-200 text-[11px] font-bold gap-1 text-center"
                 >
-                  <Mail className="w-4 h-4 text-blue-600" /> Email
+                  <Mail className="w-4 h-4 text-blue-600" />
+                  <span>Email</span>
                 </a>
+
                 <a
                   href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(form.title)}&url=${encodeURIComponent(shareUrl)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-100 text-slate-800 hover:bg-slate-200 transition-colors border border-slate-300 text-[11px] font-bold gap-1"
+                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-slate-100 text-slate-800 hover:bg-slate-200 transition-colors border border-slate-300 text-[11px] font-bold gap-1 text-center"
                 >
-                  <span className="text-sm">🐦</span> Twitter
+                  <Share2 className="w-4 h-4 text-slate-800" />
+                  <span>Twitter / X</span>
                 </a>
+
                 <a
                   href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex flex-col items-center justify-center p-3 rounded-2xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors border border-indigo-200 text-[11px] font-bold gap-1"
+                  className="flex flex-col items-center justify-center p-2.5 rounded-2xl bg-indigo-50 text-indigo-800 hover:bg-indigo-100 transition-colors border border-indigo-200 text-[11px] font-bold gap-1 text-center"
                 >
-                  <span className="text-sm">💼</span> LinkedIn
+                  <Globe className="w-4 h-4 text-indigo-600" />
+                  <span>LinkedIn</span>
                 </a>
+              </div>
+            </div>
+
+            {/* Feature App Integrations */}
+            <div>
+              <label className="block text-xs font-bold text-app-heading mb-2">Connected App Integrations</label>
+              <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-700">
+                    <GraduationCap className="w-4 h-4 text-amber-700" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-app-heading">Google Classroom Integration</p>
+                    <p className="text-[11px] text-app-muted">Directly assign quiz/form to class students</p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-200/80 text-amber-800 flex-shrink-0">
+                  Coming Soon
+                </span>
               </div>
             </div>
 
@@ -163,19 +209,30 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
         {/* Tab 2: QR Code */}
         {activeTab === 'qr' && (
           <div className="flex flex-col items-center justify-center space-y-4 py-2">
-            <div className="p-3 bg-white rounded-2xl border-2 border-indigo-100 shadow-mexo-card flex items-center justify-center">
+            <div className="p-4 bg-white rounded-3xl border-2 border-indigo-100 shadow-mexo-card flex items-center justify-center">
               <img src={qrUrl} alt="Form QR Code" className="w-48 h-48 object-contain" />
             </div>
             <p className="text-xs text-app-muted text-center max-w-xs">
-              Scan this QR code with any mobile camera to open <strong>{form.title}</strong> directly.
+              Scan this QR code with any mobile device to open <strong>{form.title}</strong> directly.
             </p>
-            <button
-              type="button"
-              onClick={handleDownloadQR}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#7C3AED] to-[#0878e8] text-white text-xs font-bold hover:opacity-90 transition-opacity shadow-sm"
-            >
-              <Download className="w-4 h-4" /> Download QR Code PNG
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadQR}
+                className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#7C3AED] to-[#0878e8] text-white text-xs font-bold hover:opacity-90 transition-opacity shadow-sm"
+              >
+                <Download className="w-4 h-4" /> Download QR Code PNG
+              </button>
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="p-2.5 rounded-xl border border-app-border text-app-heading hover:bg-slate-50 transition-colors"
+                title="Test Link"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
           </div>
         )}
 
@@ -188,7 +245,7 @@ export const ShareFormModal: React.FC<ShareFormModalProps> = ({ open, onOpenChan
                 readOnly
                 rows={4}
                 value={embedCode}
-                className="w-full bg-slate-50 border border-app-border rounded-xl p-3 text-xs font-mono text-app-heading outline-none select-all resize-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-mono font-medium text-app-heading outline-none select-all resize-none"
               />
             </div>
             <button
