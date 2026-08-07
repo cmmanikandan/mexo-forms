@@ -197,15 +197,6 @@ export const BuilderPage: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <MexoButton
-            id="builder-share"
-            variant="ghost"
-            size="sm"
-            leftIcon={<Share2 className="w-4 h-4 text-[#7C3AED]" />}
-            onClick={() => navigate(`/forms/${id}/share`)}
-          >
-            <span className="hidden sm:inline">Share</span>
-          </MexoButton>
-          <MexoButton
             id="builder-preview"
             variant="ghost"
             size="sm"
@@ -214,6 +205,7 @@ export const BuilderPage: React.FC = () => {
           >
             <span className="hidden sm:inline">Preview</span>
           </MexoButton>
+
           <MexoButton
             id="builder-settings"
             variant="ghost"
@@ -223,15 +215,87 @@ export const BuilderPage: React.FC = () => {
           >
             <span className="hidden sm:inline">Settings</span>
           </MexoButton>
-          <MexoButton
-            id="builder-publish"
-            variant="primary"
-            size="sm"
-            leftIcon={<Globe className="w-4 h-4" />}
-            onClick={() => setPublishOpen(true)}
-          >
-            {form.is_published ? 'Published ✓' : 'Publish'}
-          </MexoButton>
+
+          {form.is_published ? (
+            <div className="flex items-center gap-1.5">
+              <MexoButton
+                id="builder-share"
+                variant="primary"
+                size="sm"
+                leftIcon={<Share2 className="w-4 h-4" />}
+                onClick={() => navigate(`/forms/${id}/share`)}
+              >
+                Share
+              </MexoButton>
+
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button
+                    className="p-2 rounded-xl text-app-body hover:bg-slate-100 transition-colors border border-app-border cursor-pointer"
+                    aria-label="More actions"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    className="w-48 bg-white rounded-2xl shadow-mexo-popover border border-app-border p-1.5 z-50 text-xs font-semibold"
+                    align="end"
+                  >
+                    <DropdownMenu.Item
+                      onClick={() => window.open(`/f/${form.slug}`, '_blank')}
+                      className="flex items-center px-3 py-2 rounded-xl hover:bg-slate-100 cursor-pointer outline-none text-app-heading"
+                    >
+                      <Globe className="w-4 h-4 mr-2 text-[#7C3AED]" /> View Public Form
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/f/${form.slug}`);
+                        addToast({ type: 'success', message: 'Form link copied!' });
+                      }}
+                      className="flex items-center px-3 py-2 rounded-xl hover:bg-slate-100 cursor-pointer outline-none text-app-heading"
+                    >
+                      <Share2 className="w-4 h-4 mr-2 text-indigo-500" /> Copy Link
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      onClick={async () => {
+                        const updated = await formService.updateForm(form.id, {
+                          accepting_responses: !form.accepting_responses,
+                        });
+                        if (updated) {
+                          setForm(updated);
+                          addToast({
+                            type: 'info',
+                            message: updated.accepting_responses ? 'Responses resumed (LIVE)' : 'Responses paused',
+                          });
+                        }
+                      }}
+                      className="flex items-center px-3 py-2 rounded-xl hover:bg-slate-100 cursor-pointer outline-none text-app-heading"
+                    >
+                      <Clock className="w-4 h-4 mr-2 text-amber-500" />
+                      {form.accepting_responses ? 'Pause Responses' : 'Resume Responses'}
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      onClick={() => navigate(`/forms/${id}/settings`)}
+                      className="flex items-center px-3 py-2 rounded-xl hover:bg-slate-100 cursor-pointer outline-none text-app-heading"
+                    >
+                      <Settings className="w-4 h-4 mr-2 text-slate-500" /> Form Settings
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            </div>
+          ) : (
+            <MexoButton
+              id="builder-publish"
+              variant="primary"
+              size="sm"
+              leftIcon={<Globe className="w-4 h-4" />}
+              onClick={() => setPublishOpen(true)}
+            >
+              Publish
+            </MexoButton>
+          )}
         </div>
       </header>
 

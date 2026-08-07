@@ -439,6 +439,40 @@ export const formService = {
       .eq('user_id', userId);
     return !error;
   },
+
+  async uploadResourceAttachment(file: File, formId: string): Promise<{ url: string; name: string } | null> {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${formId}_resource_${Date.now()}.${fileExt}`;
+      const filePath = `resources/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from('form-attachments')
+        .upload(filePath, file, { upsert: true });
+
+      if (error || !data) {
+        // Fallback to data URL if storage bucket is unavailable
+        return new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = () => resolve({ url: reader.result as string, name: file.name });
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('form-attachments')
+        .getPublicUrl(filePath);
+
+      return {
+        url: publicUrlData.publicUrl,
+        name: file.name,
+      };
+    } catch (e) {
+      console.warn('uploadResourceAttachment error:', e);
+      return null;
+    }
+  },
 };
 
 function getQuestionDefaults(type: string): { question_text: string; settings: Record<string, any> } {

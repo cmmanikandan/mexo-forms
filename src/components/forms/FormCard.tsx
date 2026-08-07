@@ -95,7 +95,7 @@ export const FormCard: React.FC<FormCardProps> = ({
             )}
           </div>
           <div className="flex items-center gap-1 flex-shrink-0" onClick={e => e.stopPropagation()}>
-            <FormStatusBadge status={form.status} />
+            <FormStatusBadge form={form} />
             <DropdownMenu.Root>
               <DropdownMenu.Trigger asChild>
                 <button

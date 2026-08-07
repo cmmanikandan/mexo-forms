@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { Form } from '../../types/forms';
 import { MexoModal } from '../common/MexoModal';
 import { MexoButton } from '../common/MexoButton';
-import { MexoInput } from '../common/MexoInput';
-import { MexoToggle } from '../common/MexoToggle';
 import {
-  Calendar, Clock, Globe, Users, Lock, Sparkles, Check, CheckCircle2,
-  AlertCircle, MessageSquare, ArrowRight, ShieldCheck, Tag
+  Globe, Calendar, Clock, CheckCircle2, Copy, Share2, ExternalLink,
+  AlertTriangle, ShieldCheck, Check,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface PublishModalProps {
   open: boolean;
@@ -22,348 +21,203 @@ export const PublishModal: React.FC<PublishModalProps> = ({
   form,
   onSavePublishSettings,
 }) => {
-  const [publishOption, setPublishOption] = useState<'now' | 'schedule'>(
-    form.starts_at && new Date(form.starts_at) > new Date() ? 'schedule' : 'now'
-  );
+  const navigate = useNavigate();
+  const [publishing, setPublishing] = useState(false);
+  const [publishedSuccess, setPublishedSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const [hasEndDate, setHasEndDate] = useState<boolean>(!!form.ends_at);
+  const isScheduled = Boolean(form.starts_at && new Date(form.starts_at) > new Date());
+  const publicUrl = `${window.location.origin}/f/${form.slug}`;
 
-  const defaultStartDate = form.starts_at ? form.starts_at.slice(0, 10) : new Date().toISOString().slice(0, 10);
-  const defaultStartTime = form.starts_at ? form.starts_at.slice(11, 16) : '09:00';
+  const formatDateTime = (isoStr?: string) => {
+    if (!isoStr) return '';
+    try {
+      const d = new Date(isoStr);
+      return d.toLocaleString(undefined, {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit', hour12: true,
+      });
+    } catch {
+      return isoStr;
+    }
+  };
 
-  const defaultEndDate = form.ends_at ? form.ends_at.slice(0, 10) : new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-  const defaultEndTime = form.ends_at ? form.ends_at.slice(11, 16) : '17:00';
+  const handleConfirmPublish = async () => {
+    setValidationError(null);
 
-  const [startDate, setStartDate] = useState<string>(defaultStartDate);
-  const [startTime, setStartTime] = useState<string>(defaultStartTime);
+    // Validation checks
+    if (!form.title || !form.title.trim()) {
+      setValidationError('Form title cannot be empty.');
+      return;
+    }
 
-  const [endDate, setEndDate] = useState<string>(defaultEndDate);
-  const [endTime, setEndTime] = useState<string>(defaultEndTime);
+    if (form.starts_at && form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)) {
+      setValidationError('End date must be after the start date.');
+      return;
+    }
 
-  const [timezone, setTimezone] = useState<string>(form.timezone || 'Asia/Kolkata');
-
-  // Response Limit
-  const [hasResponseLimit, setHasResponseLimit] = useState<boolean>(!!(form.response_limit && form.response_limit > 0));
-  const [responseLimitCount, setResponseLimitCount] = useState<number>(form.response_limit || 100);
-  const [showRemainingCapacity, setShowRemainingCapacity] = useState<boolean>(form.show_remaining_capacity !== false);
-
-  // Closed Message Customization
-  const [closedTitle, setClosedTitle] = useState<string>(form.closed_title || 'Registration Closed');
-  const [closedMessage, setClosedMessage] = useState<string>(
-    form.closed_message || 'Registration for this event has ended. Thank you for your interest.'
-  );
-  const [closedButtonText, setClosedButtonText] = useState<string>(form.closed_button_text || '');
-  const [closedButtonUrl, setClosedButtonUrl] = useState<string>(form.closed_button_url || '');
-
-  // Event Registration Extra Settings
-  const [eventName, setEventName] = useState<string>(form.event_name || '');
-  const [eventDate, setEventDate] = useState<string>(form.event_date || '');
-  const [eventVenue, setEventVenue] = useState<string>(form.event_venue || '');
-  const [registrationPrefix, setRegistrationPrefix] = useState<string>(form.registration_prefix || 'MXEV');
-
-  const [saving, setSaving] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
+    setPublishing(true);
 
     try {
-      let finalStartsAt: string | undefined = undefined;
-      if (publishOption === 'schedule' && startDate && startTime) {
-        finalStartsAt = new Date(`${startDate}T${startTime}:00`).toISOString();
-      } else if (publishOption === 'now') {
-        finalStartsAt = new Date().toISOString();
-      }
-
-      let finalEndsAt: string | undefined = undefined;
-      if (hasEndDate && endDate && endTime) {
-        finalEndsAt = new Date(`${endDate}T${endTime}:00`).toISOString();
-      }
-
       const updates: Partial<Form> = {
         is_published: true,
-        status: publishOption === 'schedule' && finalStartsAt && new Date(finalStartsAt) > new Date() ? 'published' : 'published',
+        status: 'published',
         accepting_responses: true,
         manual_closed_at: undefined,
         paused_at: undefined,
-        starts_at: finalStartsAt,
-        ends_at: finalEndsAt,
-        timezone,
-        response_limit: hasResponseLimit ? Math.max(1, responseLimitCount) : undefined,
-        show_remaining_capacity: showRemainingCapacity,
-        closed_title: closedTitle.trim() || 'Registration Closed',
-        closed_message: closedMessage.trim() || 'This form is no longer accepting responses.',
-        closed_button_text: closedButtonText.trim() || undefined,
-        closed_button_url: closedButtonUrl.trim() || undefined,
-        event_name: eventName.trim() || undefined,
-        event_date: eventDate.trim() || undefined,
-        event_venue: eventVenue.trim() || undefined,
-        registration_prefix: registrationPrefix.trim().toUpperCase() || 'MXEV',
       };
 
       await onSavePublishSettings(updates);
-      onOpenChange(false);
-    } catch (err) {
-      console.error('[PUBLISH] Error updating publishing settings:', err);
+      setPublishedSuccess(true);
+    } catch (e: any) {
+      setValidationError(e?.message || 'Publishing failed. Please try again.');
     } finally {
-      setSaving(false);
+      setPublishing(false);
     }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(publicUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleCloseModal = () => {
+    setPublishedSuccess(false);
+    setValidationError(null);
+    onOpenChange(false);
   };
 
   return (
     <MexoModal
       open={open}
-      onOpenChange={onOpenChange}
-      title="Publishing & Availability Settings"
-      maxWidth="max-w-xl"
+      onOpenChange={(op) => { if (!op) handleCloseModal(); }}
+      title={publishedSuccess ? (isScheduled ? '✓ Form Scheduled' : '✓ Form Published') : 'Publish Form?'}
+      maxWidth="max-w-md"
     >
-      <form onSubmit={handleSubmit} className="space-y-6 max-h-[75vh] overflow-y-auto pr-1">
-        {/* 1. PUBLISH MODE CHOICE */}
-        <div className="space-y-3">
-          <label className="block text-xs font-bold text-app-heading uppercase tracking-wider">
-            1. Availability Schedule
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setPublishOption('now')}
-              className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
-                publishOption === 'now'
-                  ? 'border-[#7C3AED] bg-indigo-50/70 text-[#7C3AED] shadow-2xs'
-                  : 'border-app-border bg-white hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-extrabold flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> Publish Now
-                </span>
-                {publishOption === 'now' && <CheckCircle2 className="w-4 h-4 text-[#7C3AED]" />}
-              </div>
-              <p className="text-[11px] text-app-muted">Starts accepting responses immediately upon publishing.</p>
-            </button>
+      {publishedSuccess ? (
+        /* Post-Publish Success Screen */
+        <div className="space-y-5 text-center py-2">
+          <div className="w-14 h-14 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center justify-center mx-auto text-emerald-500 shadow-xs">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
 
+          <div>
+            <h3 className="text-base font-extrabold text-app-heading">{form.title}</h3>
+            <p className="text-xs text-app-muted mt-1">
+              {isScheduled
+                ? `Form scheduled to open on ${formatDateTime(form.starts_at)}`
+                : 'Your form is now live and ready to accept responses.'}
+            </p>
+          </div>
+
+          {/* Copy Link Box */}
+          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={publicUrl}
+              className="flex-1 bg-transparent text-xs text-app-heading outline-none font-mono truncate"
+            />
             <button
-              type="button"
-              onClick={() => setPublishOption('schedule')}
-              className={`p-3.5 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
-                publishOption === 'schedule'
-                  ? 'border-[#7C3AED] bg-indigo-50/70 text-[#7C3AED] shadow-2xs'
-                  : 'border-app-border bg-white hover:border-slate-300'
-              }`}
+              onClick={handleCopy}
+              className="px-3 py-1.5 rounded-xl bg-purple-50 text-[#7C3AED] hover:bg-purple-100 text-xs font-bold transition-colors flex items-center gap-1 shrink-0 cursor-pointer"
             >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-extrabold flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" /> Schedule for Later
-                </span>
-                {publishOption === 'schedule' && <CheckCircle2 className="w-4 h-4 text-[#7C3AED]" />}
-              </div>
-              <p className="text-[11px] text-app-muted">Opens automatically at a scheduled start date & time.</p>
+              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? 'Copied' : 'Copy'}
             </button>
           </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-2 pt-1">
+            <button
+              onClick={() => window.open(publicUrl, '_blank')}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#7C3AED] to-[#0878e8] hover:opacity-90 transition-opacity min-h-[44px] cursor-pointer"
+            >
+              <ExternalLink className="w-4 h-4" /> View Public Form
+            </button>
+            <button
+              onClick={() => {
+                handleCloseModal();
+                navigate(`/forms/${form.id}/share`);
+              }}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold text-app-heading border border-app-border hover:bg-slate-50 transition-colors min-h-[44px] cursor-pointer"
+            >
+              <Share2 className="w-4 h-4 text-[#7C3AED]" /> Share & QR Code
+            </button>
+            <button
+              onClick={handleCloseModal}
+              className="w-full py-2.5 rounded-xl text-xs font-semibold text-app-muted hover:text-app-heading transition-colors"
+            >
+              Done
+            </button>
+          </div>
         </div>
-
-        {/* Start Date / Time inputs if Schedule */}
-        {publishOption === 'schedule' && (
-          <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-3">
-            <h4 className="text-xs font-extrabold text-app-heading flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-[#7C3AED]" /> Start Date & Time
-            </h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold text-app-muted mb-1">Start Date</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                  className="w-full rounded-xl border border-app-border px-3 py-2 text-xs font-semibold text-app-heading bg-white outline-none focus:border-[#7C3AED]"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-bold text-app-muted mb-1">Start Time</label>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={e => setStartTime(e.target.value)}
-                  className="w-full rounded-xl border border-app-border px-3 py-2 text-xs font-semibold text-app-heading bg-white outline-none focus:border-[#7C3AED]"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 2. END DATE & TIME */}
-        <div className="space-y-3 pt-1 border-t border-slate-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-xs font-bold text-app-heading">Set Deadline / End Date</label>
-              <p className="text-[11px] text-app-muted">Form automatically closes after the deadline passes.</p>
-            </div>
-            <MexoToggle
-              id="toggle-end-date"
-              checked={hasEndDate}
-              onCheckedChange={setHasEndDate}
-            />
-          </div>
-
-          {hasEndDate && (
-            <div className="p-4 rounded-2xl bg-slate-50 border border-app-border space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-app-muted mb-1">End Date</label>
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={e => setEndDate(e.target.value)}
-                    className="w-full rounded-xl border border-app-border px-3 py-2 text-xs font-semibold text-app-heading bg-white outline-none focus:border-[#7C3AED]"
-                    required={hasEndDate}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-app-muted mb-1">End Time</label>
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={e => setEndTime(e.target.value)}
-                    className="w-full rounded-xl border border-app-border px-3 py-2 text-xs font-semibold text-app-heading bg-white outline-none focus:border-[#7C3AED]"
-                    required={hasEndDate}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-app-muted mb-1 flex items-center gap-1">
-                  <Globe className="w-3 h-3 text-[#7C3AED]" /> Timezone
-                </label>
-                <select
-                  value={timezone}
-                  onChange={e => setTimezone(e.target.value)}
-                  className="w-full rounded-xl border border-app-border px-3 py-2 text-xs font-semibold text-app-heading bg-white outline-none focus:border-[#7C3AED]"
-                >
-                  <option value="Asia/Kolkata">Asia/Kolkata (IST • UTC+5:30)</option>
-                  <option value="UTC">UTC (Coordinated Universal Time)</option>
-                  <option value="America/New_York">America/New_York (EST • UTC-5)</option>
-                  <option value="Europe/London">Europe/London (GMT • UTC+0)</option>
-                </select>
-              </div>
+      ) : (
+        /* Small Pre-Publish Confirmation Screen */
+        <div className="space-y-4 py-1">
+          {validationError && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-semibold flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+              <span>{validationError}</span>
             </div>
           )}
-        </div>
 
-        {/* 3. RESPONSE CAPACITY LIMIT */}
-        <div className="space-y-3 pt-3 border-t border-slate-100">
-          <div className="flex items-center justify-between">
-            <div>
-              <label className="text-xs font-bold text-app-heading flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-[#7C3AED]" /> Maximum Response Limit / Capacity
-              </label>
-              <p className="text-[11px] text-app-muted">Useful for workshops, events and limited seats (e.g. 100 spots).</p>
-            </div>
-            <MexoToggle
-              id="toggle-response-limit"
-              checked={hasResponseLimit}
-              onCheckedChange={setHasResponseLimit}
-            />
-          </div>
-
-          {hasResponseLimit && (
-            <div className="p-4 rounded-2xl bg-purple-50/50 border border-purple-100 space-y-3">
-              <div>
-                <label className="block text-[11px] font-bold text-app-heading mb-1">Maximum Seats / Capacity</label>
-                <input
-                  type="number"
-                  min={1}
-                  value={responseLimitCount}
-                  onChange={e => setResponseLimitCount(Number(e.target.value))}
-                  placeholder="e.g. 100"
-                  className="w-full rounded-xl border border-app-border px-3 py-2 text-xs font-bold text-app-heading bg-white outline-none focus:border-[#7C3AED]"
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] font-semibold text-app-heading">Show remaining spots to respondents</span>
-                <MexoToggle
-                  id="toggle-remaining-capacity"
-                  checked={showRemainingCapacity}
-                  onCheckedChange={setShowRemainingCapacity}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 4. CUSTOM AFTER-CLOSING MESSAGE */}
-        <div className="space-y-3 pt-3 border-t border-slate-100">
-          <label className="block text-xs font-bold text-app-heading uppercase tracking-wider flex items-center gap-1.5">
-            <MessageSquare className="w-3.5 h-3.5 text-[#7C3AED]" /> Custom Closed Page Screen
-          </label>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-[11px] font-bold text-app-heading mb-1">Closed Title</label>
-              <MexoInput
-                value={closedTitle}
-                onChange={e => setClosedTitle(e.target.value)}
-                placeholder="Registration Closed"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-app-heading mb-1">Closed Message</label>
-              <textarea
-                value={closedMessage}
-                onChange={e => setClosedMessage(e.target.value)}
-                placeholder="Registration for this event has ended. Thank you for your interest."
-                rows={2}
-                className="w-full rounded-xl border border-app-border px-3 py-2 text-xs font-medium text-app-heading bg-white outline-none focus:border-[#7C3AED] resize-y"
-              />
+          <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-2">
+            <h4 className="text-sm font-extrabold text-app-heading">{form.title}</h4>
+            <div className="text-xs text-app-body space-y-1 font-semibold">
+              <p className="flex items-center gap-1.5 text-slate-700">
+                <Globe className="w-3.5 h-3.5 text-[#7C3AED]" />
+                {isScheduled
+                  ? `Scheduled to open: ${formatDateTime(form.starts_at)}`
+                  : 'Form will start accepting responses immediately after publishing.'}
+              </p>
+              {form.ends_at && (
+                <p className="flex items-center gap-1.5 text-amber-700">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  Closes: {formatDateTime(form.ends_at)}
+                </p>
+              )}
+              {form.response_limit && (
+                <p className="flex items-center gap-1.5 text-purple-700">
+                  Capacity limit: {form.response_limit} responses
+                </p>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* 5. EVENT REGISTRATION METADATA */}
-        <div className="space-y-3 pt-3 border-t border-slate-100">
-          <label className="block text-xs font-bold text-app-heading uppercase tracking-wider flex items-center gap-1.5">
-            <Tag className="w-3.5 h-3.5 text-[#7C3AED]" /> Event Details & Registration ID Prefix
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-bold text-app-heading mb-1">Event Venue / Location</label>
-              <MexoInput
-                value={eventVenue}
-                onChange={e => setEventVenue(e.target.value)}
-                placeholder="Main Auditorium / Online"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-bold text-app-heading mb-1">Registration Prefix</label>
-              <MexoInput
-                value={registrationPrefix}
-                onChange={e => setRegistrationPrefix(e.target.value)}
-                placeholder="MXEV"
-              />
-            </div>
+          <p className="text-[11px] text-app-muted leading-relaxed">
+            You can change start dates, end dates, capacities, or pause responses anytime in <span className="font-bold text-app-heading">Form Settings</span>.
+          </p>
+
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+            <button
+              onClick={handleCloseModal}
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-app-heading border border-app-border hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirmPublish}
+              disabled={publishing}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#7C3AED] to-[#0878e8] hover:opacity-90 transition-opacity flex items-center gap-1.5 disabled:opacity-50 min-h-[40px] cursor-pointer"
+            >
+              {publishing ? (
+                'Publishing...'
+              ) : isScheduled ? (
+                <>
+                  <Calendar className="w-3.5 h-3.5" /> Schedule Form
+                </>
+              ) : (
+                <>
+                  <Globe className="w-3.5 h-3.5" /> Publish Form
+                </>
+              )}
+            </button>
           </div>
         </div>
-
-        {/* Action Buttons */}
-        <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="px-4 py-2 rounded-xl text-xs font-bold text-app-body hover:bg-slate-100 transition-colors"
-          >
-            Cancel
-          </button>
-          <MexoButton
-            type="submit"
-            variant="primary"
-            size="md"
-            loading={saving}
-          >
-            Save & Publish Form
-          </MexoButton>
-        </div>
-      </form>
+      )}
     </MexoModal>
   );
 };
