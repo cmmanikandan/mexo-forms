@@ -16,15 +16,17 @@ export const authService = {
       // 1. Look up profile in shared profiles table
       const profile = await profileService.getProfileByIdentifier(cleanInput);
 
+      const cleanUsername = cleanInput.includes('@') ? cleanInput.split('@')[0] : cleanInput;
+      const cleanEmail = cleanInput.includes('@') ? cleanInput : `${cleanInput}@mexo.com`;
+
       // Determine candidate emails to attempt Supabase Auth login
       const candidateEmails: string[] = [];
       if (profile?.primary_address) {
         candidateEmails.push(profile.primary_address.toLowerCase());
       }
-      if (cleanInput.includes('@')) {
-        candidateEmails.push(cleanInput);
-      } else {
-        candidateEmails.push(`${cleanInput}@mexo.com`);
+      candidateEmails.push(cleanEmail);
+      if (profile?.username) {
+        candidateEmails.push(`${profile.username.toLowerCase()}@mexo.com`);
       }
 
       // Deduplicate
@@ -45,13 +47,17 @@ export const authService = {
         }
       }
 
-      // 3. Fallback provisioning: If Supabase Auth account doesn't exist yet, but profile exists in DB
-      if (!activeSession && profile) {
-        const isDefaultPassword = cleanPassword === profile.username;
-        const isAdminPassword = profile.role === 'system_admin' && (cleanPassword === 'MexoAdmin#2026!SecureKey' || cleanPassword === 'admin123#Secure');
+      // 3. Fallback provisioning: If Supabase Auth account doesn't exist yet, but credentials match default profile
+      if (!activeSession) {
+        const isDefaultPassword =
+          cleanPassword === cleanUsername ||
+          (profile?.username && cleanPassword === profile.username.toLowerCase());
+        const isAdminPassword =
+          (profile?.role === 'system_admin' || cleanInput === 'admin' || cleanInput === 'admin@mexo.com') &&
+          (cleanPassword === 'MexoAdmin#2026!SecureKey' || cleanPassword === 'admin123#Secure');
 
         if (isDefaultPassword || isAdminPassword) {
-          const targetEmail = profile.primary_address || (cleanInput.includes('@') ? cleanInput : `${profile.username}@mexo.com`);
+          const targetEmail = profile?.primary_address || cleanEmail;
           try {
             await supabase.auth.signUp({
               email: targetEmail,

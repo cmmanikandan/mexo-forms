@@ -24,11 +24,14 @@ export const profileService = {
 
   async getProfileByIdentifier(identifier: string): Promise<MexoProfile | null> {
     const clean = identifier.trim().toLowerCase();
+    if (!clean) return null;
     const cleanUsername = clean.includes('@') ? clean.split('@')[0] : clean;
+    const cleanEmail = clean.includes('@') ? clean : `${clean}@mexo.com`;
+
     const { data } = await supabase
       .from('profiles')
       .select('*')
-      .or(`primary_address.eq.${clean},username.eq.${cleanUsername}`)
+      .or(`primary_address.ilike.${cleanEmail},username.ilike.${cleanUsername}`)
       .limit(1);
     if (!data || data.length === 0) return null;
     return data[0] as MexoProfile;
