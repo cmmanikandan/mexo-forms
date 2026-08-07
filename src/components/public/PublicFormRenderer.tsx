@@ -392,12 +392,6 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
           </div>
         </div>
       </form>
-
-      {/* Footer */}
-      <div className="px-6 sm:px-8 py-4 border-t border-app-border bg-slate-50/50 flex items-center justify-center gap-2 text-[11px] text-app-muted">
-        <img src="/logo.png" alt="MEXO Forms" className="w-4 h-4 object-contain" />
-        Powered by <span className="font-bold text-app-heading">MEXO Forms</span>
-      </div>
     </div>
   );
 };

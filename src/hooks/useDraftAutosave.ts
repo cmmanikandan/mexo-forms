@@ -34,6 +34,8 @@ interface UseDraftAutosaveReturn {
     currentPage: number,
     totalQuestions: number,
   ) => Promise<boolean>;
+  /** Set initial version from loaded draft */
+  setVersion: (ver: number) => void;
   /** Accept server version during conflict resolution */
   resolveConflict: (useServer: boolean, serverAnswers?: Record<string, any>) => void;
   conflictServerAnswers: Record<string, any> | null;
@@ -213,9 +215,14 @@ export function useDraftAutosave({
     }
   }, [formId, userId]);
 
+  const setVersion = useCallback((ver: number) => {
+    if (ver > 0) setCurrentVersion(ver);
+  }, []);
+
   return {
     saveStatus,
     currentVersion,
+    setVersion,
     queueSave,
     forceSave,
     resolveConflict,

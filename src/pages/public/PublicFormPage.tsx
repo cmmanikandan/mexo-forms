@@ -101,6 +101,7 @@ export const PublicFormPage: React.FC = () => {
     saveStatus,
     queueSave,
     forceSave,
+    setVersion,
     resolveConflict,
     conflictServerAnswers,
   } = useDraftAutosave({
@@ -158,6 +159,7 @@ export const PublicFormPage: React.FC = () => {
         setRestoredAnswers(draft.answers);
         setCurrentAnswers(draft.answers);
         setRestoredPage(draft.currentPage || 0);
+        if (draft.version) setVersion(draft.version);
         setHasDraft(true);
         setDraftSource(source);
       }

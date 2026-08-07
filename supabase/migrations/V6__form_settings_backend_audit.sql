@@ -198,3 +198,94 @@ CREATE POLICY "Authenticated users form attachments upload"
   ON storage.objects FOR INSERT
   TO authenticated
   WITH CHECK (bucket_id = 'form-attachments');
+
+-- =============================================
+-- 6. IDEMPOTENT DRAFT SAVING RPC (Fixes Save Failed / Conflict Bugs)
+-- =============================================
+CREATE OR REPLACE FUNCTION public.upsert_form_draft(
+  p_form_id UUID,
+  p_answers JSONB,
+  p_current_page INTEGER DEFAULT 0,
+  p_completion_percentage INTEGER DEFAULT 0,
+  p_client_version INTEGER DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_result JSONB;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    -- Fallback: return success false if unauthenticated
+    RETURN jsonb_build_object('success', false, 'error', 'AUTHENTICATION_REQUIRED');
+  END IF;
+
+  -- Atomic Upsert (always updates user's draft smoothly without false conflict errors)
+  INSERT INTO public.form_response_drafts (
+    form_id, user_id, answers, current_page, completion_percentage,
+    version, expires_at
+  ) VALUES (
+    p_form_id, v_user_id, COALESCE(p_answers, '{}'::jsonb), p_current_page, p_completion_percentage,
+    1, NOW() + INTERVAL '30 days'
+  )
+  ON CONFLICT (form_id, user_id) DO UPDATE SET
+    answers               = EXCLUDED.answers,
+    current_page          = EXCLUDED.current_page,
+    completion_percentage = EXCLUDED.completion_percentage,
+    version               = form_response_drafts.version + 1,
+    expires_at            = NOW() + INTERVAL '30 days',
+    updated_at            = NOW()
+  RETURNING jsonb_build_object(
+    'id', id,
+    'version', version,
+    'updated_at', updated_at,
+    'conflict', false,
+    'success', true
+  ) INTO v_result;
+
+  RETURN v_result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.upsert_form_draft(UUID, JSONB, INTEGER, INTEGER, INTEGER)
+  TO authenticated, anon;
+
+CREATE OR REPLACE FUNCTION public.get_form_draft(p_form_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_result JSONB;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT jsonb_build_object(
+    'id', id,
+    'answers', answers,
+    'current_page', current_page,
+    'completion_percentage', completion_percentage,
+    'version', version,
+    'updated_at', updated_at,
+    'expires_at', expires_at
+  ) INTO v_result
+  FROM public.form_response_drafts
+  WHERE form_id = p_form_id
+    AND user_id = v_user_id
+    AND (expires_at IS NULL OR expires_at > NOW());
+
+  RETURN v_result;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_form_draft(UUID) TO authenticated, anon;
+
