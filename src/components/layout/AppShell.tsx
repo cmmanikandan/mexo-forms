@@ -40,7 +40,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       </div>
 
       {/* Mobile */}
-      <MobileBottomNav />
+      <MobileBottomNav onOpenDrawer={() => setDrawerOpen(true)} />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>
   );

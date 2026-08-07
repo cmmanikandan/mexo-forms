@@ -3,7 +3,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, FileText, Plus, ClipboardList, LayoutGrid } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export const MobileBottomNav: React.FC = () => {
+interface MobileBottomNavProps {
+  onOpenDrawer?: () => void;
+}
+
+export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenDrawer }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -19,7 +23,7 @@ export const MobileBottomNav: React.FC = () => {
         id={id}
         onClick={() => navigate(path)}
         className={clsx(
-          'flex flex-col items-center justify-center flex-1 py-1.5 text-[10px] font-semibold transition-colors gap-1',
+          'flex flex-col items-center justify-center flex-1 py-1.5 text-[10px] font-semibold transition-colors gap-1 cursor-pointer',
           active ? 'text-[#7C3AED]' : 'text-app-muted'
         )}
         aria-label={label}
@@ -44,7 +48,7 @@ export const MobileBottomNav: React.FC = () => {
       <button
         id="mobile-nav-create"
         onClick={() => navigate('/forms/new')}
-        className="flex flex-col items-center justify-center flex-1 py-1.5 group"
+        className="flex flex-col items-center justify-center flex-1 py-1.5 group cursor-pointer"
         aria-label="Create new form"
       >
         <div className="w-12 h-12 -mt-4 rounded-2xl bg-gradient-to-tr from-[#7C3AED] via-[#6366F1] to-[#0878e8] flex items-center justify-center shadow-lg shadow-indigo-500/40 group-active:scale-95 transition-transform">
@@ -53,7 +57,28 @@ export const MobileBottomNav: React.FC = () => {
       </button>
 
       <NavItem id="mobile-nav-responses" icon={<ClipboardList className="w-5 h-5" />} label="Responses" path="/responses" />
-      <NavItem id="mobile-nav-menu" icon={<LayoutGrid className="w-5 h-5" />} label="Menu" path="/settings" />
+      
+      {/* Menu Button - Opens Side Navigation Drawer */}
+      <button
+        id="mobile-nav-menu"
+        onClick={() => {
+          if (onOpenDrawer) {
+            onOpenDrawer();
+          } else {
+            navigate('/settings');
+          }
+        }}
+        className={clsx(
+          'flex flex-col items-center justify-center flex-1 py-1.5 text-[10px] font-semibold transition-colors gap-1 cursor-pointer',
+          location.pathname === '/settings' || location.pathname.startsWith('/account') ? 'text-[#7C3AED]' : 'text-app-muted'
+        )}
+        aria-label="Open side navigation menu"
+      >
+        <span className={location.pathname === '/settings' || location.pathname.startsWith('/account') ? 'text-[#7C3AED]' : 'text-slate-400'}>
+          <LayoutGrid className="w-5 h-5" />
+        </span>
+        Menu
+      </button>
     </nav>
   );
 };

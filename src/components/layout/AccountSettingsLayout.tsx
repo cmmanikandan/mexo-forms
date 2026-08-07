@@ -92,7 +92,7 @@ export const AccountSettingsLayout: React.FC<AccountSettingsLayoutProps> = ({
       </div>
 
       {/* Mobile Navigation & Drawer */}
-      <MobileBottomNav />
+      <MobileBottomNav onOpenDrawer={() => setDrawerOpen(true)} />
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>
   );
