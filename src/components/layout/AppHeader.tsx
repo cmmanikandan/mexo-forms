@@ -135,6 +135,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({ onHamburger, onSearch }) =
                   <Settings className="w-4 h-4 mr-2.5 text-app-muted" />
                   Forms App Settings
                 </DropdownMenu.Item>
+                <DropdownMenu.Item
+                  onClick={() => window.open((import.meta as any).env?.VITE_MEXO_MAIL_URL || 'https://mexo-mail.vercel.app', '_blank')}
+                  className="flex items-center px-3 py-2.5 text-xs font-semibold text-app-body rounded-xl hover:bg-slate-100 cursor-pointer outline-none"
+                >
+                  <ChevronRight className="w-4 h-4 mr-2.5 text-[#7C3AED]" />
+                  Switch to MEXO Mail
+                </DropdownMenu.Item>
               </div>
 
               <div className="border-t border-app-border p-2">
