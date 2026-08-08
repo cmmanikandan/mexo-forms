@@ -41,12 +41,20 @@ export const QuickOwnerControls: React.FC<QuickOwnerControlsProps> = ({
   const handlePauseToggle = async () => {
     setActionLoading(true);
     try {
-      if (form.paused_at) {
+      if (form.paused_at || (form.status as string) === 'paused') {
         // Resume
-        await onUpdateForm({ paused_at: undefined });
+        await onUpdateForm({
+          paused_at: null as any,
+          manual_closed_at: null as any,
+          accepting_responses: true,
+          status: 'published',
+        });
       } else {
         // Pause
-        await onUpdateForm({ paused_at: new Date().toISOString() });
+        await onUpdateForm({
+          paused_at: new Date().toISOString(),
+          status: 'paused' as any,
+        });
       }
     } catch (e) {
       console.error(e);
@@ -79,8 +87,8 @@ export const QuickOwnerControls: React.FC<QuickOwnerControlsProps> = ({
         accepting_responses: true,
         status: 'published',
         starts_at: new Date().toISOString(),
-        manual_closed_at: undefined,
-        paused_at: undefined,
+        manual_closed_at: null as any,
+        paused_at: null as any,
       });
     } catch (e) {
       console.error(e);
@@ -95,8 +103,8 @@ export const QuickOwnerControls: React.FC<QuickOwnerControlsProps> = ({
       accepting_responses: true,
       status: 'published',
       ends_at: newEndsAt,
-      manual_closed_at: undefined,
-      paused_at: undefined,
+      manual_closed_at: null as any,
+      paused_at: null as any,
     });
   };
 
@@ -106,8 +114,8 @@ export const QuickOwnerControls: React.FC<QuickOwnerControlsProps> = ({
       accepting_responses: true,
       status: 'published',
       response_limit: newLimit,
-      manual_closed_at: undefined,
-      paused_at: undefined,
+      manual_closed_at: null as any,
+      paused_at: null as any,
     });
   };
 

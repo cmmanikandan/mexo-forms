@@ -65,16 +65,16 @@ export interface Form {
   attachment_name?: string;
   submission_attachment_url?: string;
   submission_attachment_name?: string;
-  starts_at?: string;
-  ends_at?: string;
+  starts_at?: string | null;
+  ends_at?: string | null;
   theme_color?: string;
   is_starred?: boolean;
   created_at: string;
   updated_at: string;
 
   // Advanced Publishing, Scheduling & Registration Limits
-  manual_closed_at?: string;
-  paused_at?: string;
+  manual_closed_at?: string | null;
+  paused_at?: string | null;
   response_limit?: number;
   show_remaining_capacity?: boolean;
   closed_title?: string;

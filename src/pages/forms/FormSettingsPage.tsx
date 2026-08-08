@@ -247,21 +247,21 @@ export const FormSettingsPage: React.FC = () => {
     setSaving(true);
     setSaved(false);
 
-    // Live extension check: if form was closed by deadline, but new end date is in future + accepting_responses is ON
     let status = form.status;
-    let manualClosedAt: string | undefined = form.manual_closed_at;
+    let manualClosedAt: string | null = null;
 
     if (!formData.accepting_responses) {
-      manualClosedAt = new Date().toISOString();
+      manualClosedAt = form.manual_closed_at || new Date().toISOString();
+      status = 'closed';
     } else {
-      manualClosedAt = undefined;
+      manualClosedAt = null;
+      if (form.is_published || status === 'closed') {
+        status = 'published';
+      }
     }
 
-    if (form.is_published) {
-      const now = new Date();
-      if (endsAtISO && new Date(endsAtISO) > now && formData.accepting_responses) {
-        status = 'published'; // Re-opened / Live
-      }
+    if (formData.accepting_responses && endsAtISO && new Date(endsAtISO) > new Date()) {
+      status = 'published'; // Re-opened / Live
     }
 
     const payload: Partial<Form> = {
@@ -280,31 +280,32 @@ export const FormSettingsPage: React.FC = () => {
       show_quiz_score: formData.show_quiz_score,
       show_response_summary: formData.show_response_summary,
 
-      starts_at: startsAtISO || undefined,
-      ends_at: endsAtISO || undefined,
+      starts_at: startsAtISO,
+      ends_at: endsAtISO,
       timezone: formData.timezone,
-      manual_closed_at: manualClosedAt || undefined,
+      manual_closed_at: manualClosedAt,
+      paused_at: formData.accepting_responses ? null : form.paused_at,
       status: status,
 
       time_limit_minutes: formData.enable_quiz_timer ? Number(formData.time_limit_minutes) || 0 : 0,
 
-      response_limit: formData.enable_response_limit ? Number(formData.response_limit) || 0 : undefined,
+      response_limit: formData.enable_response_limit ? Number(formData.response_limit) || 0 : null,
 
-      event_name: formData.enable_event_features ? formData.event_name : undefined,
-      event_venue: formData.enable_event_features ? formData.event_venue : undefined,
-      event_date: formData.enable_event_features ? formData.event_date : undefined,
-      registration_prefix: formData.enable_event_features ? formData.registration_prefix : undefined,
+      event_name: formData.enable_event_features ? formData.event_name : null,
+      event_venue: formData.enable_event_features ? formData.event_venue : null,
+      event_date: formData.enable_event_features ? formData.event_date : null,
+      registration_prefix: formData.enable_event_features ? formData.registration_prefix : null,
 
       closed_title: formData.closed_title,
       closed_message: formData.closed_message,
-      closed_button_text: formData.closed_button_text,
-      closed_button_url: formData.closed_button_url,
+      closed_button_text: formData.closed_button_text || null,
+      closed_button_url: formData.closed_button_url || null,
 
-      attachment_url: formData.attachment_url,
-      attachment_name: formData.attachment_name,
+      attachment_url: formData.attachment_url || null,
+      attachment_name: formData.attachment_name || null,
       attachment_display_mode: formData.attachment_display_mode,
-      submission_attachment_url: formData.submission_attachment_url,
-      submission_attachment_name: formData.submission_attachment_name,
+      submission_attachment_url: formData.submission_attachment_url || null,
+      submission_attachment_name: formData.submission_attachment_name || null,
     } as any;
 
     const updated = await formService.updateForm(id, payload);

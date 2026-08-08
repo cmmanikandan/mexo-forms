@@ -42,7 +42,7 @@ export function getFormAvailability(
   const totalCap = isRegistration && form.response_limit && form.response_limit > 0 ? form.response_limit : undefined;
   const remainingCap = totalCap !== undefined ? Math.max(0, totalCap - respCount) : undefined;
 
-  const formatDateStr = (isoString?: string) => {
+  const formatDateStr = (isoString?: string | null) => {
     if (!isoString) return undefined;
     try {
       const d = new Date(isoString);

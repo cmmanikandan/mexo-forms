@@ -30,7 +30,7 @@ export const PublishModal: React.FC<PublishModalProps> = ({
   const isScheduled = Boolean(form.starts_at && new Date(form.starts_at) > new Date());
   const publicUrl = `${window.location.origin}/f/${form.slug}`;
 
-  const formatDateTime = (isoStr?: string) => {
+  const formatDateTime = (isoStr?: string | null) => {
     if (!isoStr) return '';
     try {
       const d = new Date(isoStr);
@@ -64,8 +64,8 @@ export const PublishModal: React.FC<PublishModalProps> = ({
         is_published: true,
         status: 'published',
         accepting_responses: true,
-        manual_closed_at: undefined,
-        paused_at: undefined,
+        manual_closed_at: null as any,
+        paused_at: null as any,
       };
 
       await onSavePublishSettings(updates);

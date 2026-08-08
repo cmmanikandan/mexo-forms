@@ -103,11 +103,21 @@ export const formService = {
   },
 
   async publishForm(formId: string): Promise<Form | null> {
-    return formService.updateForm(formId, { status: 'published', is_published: true });
+    return formService.updateForm(formId, {
+      status: 'published',
+      is_published: true,
+      accepting_responses: true,
+      manual_closed_at: null as any,
+      paused_at: null as any,
+    });
   },
 
   async closeForm(formId: string): Promise<Form | null> {
-    return formService.updateForm(formId, { status: 'closed', accepting_responses: false });
+    return formService.updateForm(formId, {
+      status: 'closed',
+      accepting_responses: false,
+      manual_closed_at: new Date().toISOString(),
+    });
   },
 
   async trashForm(formId: string): Promise<void> {

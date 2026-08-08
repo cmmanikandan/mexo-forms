@@ -259,8 +259,12 @@ export const BuilderPage: React.FC = () => {
                     </DropdownMenu.Item>
                     <DropdownMenu.Item
                       onClick={async () => {
+                        const isResuming = !form.accepting_responses;
                         const updated = await formService.updateForm(form.id, {
-                          accepting_responses: !form.accepting_responses,
+                          accepting_responses: isResuming,
+                          status: isResuming ? 'published' : 'closed',
+                          manual_closed_at: isResuming ? (null as any) : new Date().toISOString(),
+                          paused_at: isResuming ? (null as any) : new Date().toISOString(),
                         });
                         if (updated) {
                           setForm(updated);

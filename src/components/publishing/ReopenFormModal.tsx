@@ -33,24 +33,29 @@ export const ReopenFormModal: React.FC<ReopenFormModalProps> = ({
     e.preventDefault();
     setSaving(true);
     try {
-      let finalStartsAt: string | undefined = undefined;
+      let finalStartsAt: string | null = null;
       if (reopenMode === 'schedule' && startDate && startTime) {
         finalStartsAt = new Date(`${startDate}T${startTime}:00`).toISOString();
       } else {
         finalStartsAt = new Date().toISOString();
       }
 
-      let finalEndsAt: string | undefined = undefined;
+      let finalEndsAt: string | null = null;
       if (hasNewEndDate && endDate && endTime) {
         finalEndsAt = new Date(`${endDate}T${endTime}:00`).toISOString();
+      } else if (form.ends_at && new Date(form.ends_at) <= new Date()) {
+        // Clear expired end date so reopening actually opens the form
+        finalEndsAt = null;
+      } else {
+        finalEndsAt = form.ends_at || null;
       }
 
       const updates: Partial<Form> = {
         is_published: true,
         accepting_responses: true,
         status: 'published',
-        manual_closed_at: undefined,
-        paused_at: undefined,
+        manual_closed_at: null as any,
+        paused_at: null as any,
         starts_at: finalStartsAt,
         ends_at: finalEndsAt,
       };
