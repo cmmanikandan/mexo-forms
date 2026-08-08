@@ -77,18 +77,18 @@ export interface Form {
   paused_at?: string | null;
   response_limit?: number;
   show_remaining_capacity?: boolean;
-  closed_title?: string;
-  closed_message?: string;
-  closed_button_text?: string;
-  closed_button_url?: string;
+  closed_title?: string | null;
+  closed_message?: string | null;
+  closed_button_text?: string | null;
+  closed_button_url?: string | null;
   timezone?: string;
   allow_response_editing?: boolean;
   allow_cancellation?: boolean;
   waitlist_enabled?: boolean;
-  registration_prefix?: string;
-  event_name?: string;
-  event_date?: string;
-  event_venue?: string;
+  registration_prefix?: string | null;
+  event_name?: string | null;
+  event_date?: string | null;
+  event_venue?: string | null;
 
   // Joined fields
   response_count?: number;

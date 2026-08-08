@@ -35,6 +35,7 @@ const TEMPLATES: TemplateItem[] = [
     questions: [
       { text: 'How satisfied are you with our service?', type: 'rating', required: true },
       { text: 'How likely are you to recommend us to a friend?', type: 'linear_scale', required: true },
+      { text: 'What features or services do you appreciate most?', type: 'short_text', required: false },
       { text: 'What can we improve?', type: 'long_text', required: false },
     ],
   },
@@ -64,7 +65,38 @@ const TEMPLATES: TemplateItem[] = [
     questions: [
       { text: 'Respondent Name / Department', type: 'short_text' },
       { text: 'Primary Topic of Interest', type: 'multiple_choice', options: ['Technology', 'Business', 'Design', 'Science'] },
+      { text: 'How frequently do you use our platform?', type: 'dropdown', options: ['Daily', 'Weekly', 'Monthly', 'First Time'] },
       { text: 'Additional Comments', type: 'long_text' },
+    ],
+  },
+  {
+    id: 'course_evaluation',
+    name: 'Course & Faculty Evaluation',
+    category: 'Standard Forms',
+    mode: 'standard',
+    description: 'Collect student feedback on course content, instructor clarity, and materials.',
+    icon: <GraduationCap className="w-5 h-5" />,
+    color: 'from-cyan-500 to-blue-600',
+    questions: [
+      { text: 'Course Name / Code', type: 'short_text', required: true },
+      { text: 'Overall Rating of the Course', type: 'rating', required: true },
+      { text: 'Instructor Clarity & Delivery', type: 'rating', required: true },
+      { text: 'Were course materials helpful?', type: 'yes_no', required: true },
+      { text: 'Key Suggestions for Next Batch', type: 'long_text' },
+    ],
+  },
+  {
+    id: 'product_csat',
+    name: 'Product CSAT & Feature Request',
+    category: 'Standard Forms',
+    mode: 'standard',
+    description: 'Gather user CSAT ratings, bug reports, and top feature requests.',
+    icon: <Zap className="w-5 h-5" />,
+    color: 'from-[#7C3AED] to-indigo-700',
+    questions: [
+      { text: 'How easy is it to navigate our product?', type: 'rating', required: true },
+      { text: 'Which feature do you use most?', type: 'dropdown', options: ['Form Builder', 'Live Analytics', 'Event Registration', 'Quizzes'] },
+      { text: 'What new feature would you like us to build?', type: 'long_text', required: true },
     ],
   },
 
@@ -160,19 +192,37 @@ const TEMPLATES: TemplateItem[] = [
     ],
   },
   {
-    id: 'webinar_registration',
-    name: 'Webinar / Online Event',
+    id: 'cultural_fest',
+    name: 'College Cultural Fest Signup',
     category: 'Registration & Events',
     mode: 'registration',
-    prefix: 'MXWB',
-    description: 'Online webinar registration with joining link delivery.',
-    icon: <Zap className="w-5 h-5" />,
-    color: 'from-rose-500 to-pink-600',
+    prefix: 'MXCL',
+    description: 'Cultural festival registration for music, dance, drama & art competitions.',
+    icon: <Star className="w-5 h-5" />,
+    color: 'from-pink-500 to-purple-600',
     questions: [
-      { text: 'Full Name', type: 'short_text', required: true },
+      { text: 'Participant / Group Name', type: 'short_text', required: true },
+      { text: 'Contact Email', type: 'email', required: true },
+      { text: 'Phone Number', type: 'phone', required: true },
+      { text: 'College Name', type: 'short_text', required: true },
+      { text: 'Competition Event', type: 'dropdown', options: ['Solo Singing', 'Group Dance', 'Battle of Bands', 'Drama / Skit', 'Photography'] },
+    ],
+  },
+  {
+    id: 'sports_tournament',
+    name: 'Sports Tournament Registration',
+    category: 'Registration & Events',
+    mode: 'registration',
+    prefix: 'MXSP',
+    description: 'Registration for intra-college or corporate sports tournaments.',
+    icon: <Users className="w-5 h-5" />,
+    color: 'from-emerald-600 to-green-700',
+    questions: [
+      { text: 'Player / Captain Name', type: 'short_text', required: true },
       { text: 'Email Address', type: 'email', required: true },
-      { text: 'Mobile Number', type: 'phone' },
-      { text: 'Organization / Institution', type: 'short_text' },
+      { text: 'Phone Number', type: 'phone', required: true },
+      { text: 'Sport Discipline', type: 'dropdown', options: ['Cricket (T10)', 'Football (5v5)', 'Badminton (Singles)', 'Basketball', 'Table Tennis'] },
+      { text: 'Emergency Contact Person & Phone', type: 'short_text', required: true },
     ],
   },
 
@@ -189,6 +239,7 @@ const TEMPLATES: TemplateItem[] = [
       { text: 'Participant Name', type: 'short_text', required: true },
       { text: 'Question 1: What is the capital of France?', type: 'multiple_choice', required: true, options: ['London', 'Berlin', 'Paris', 'Madrid'] },
       { text: 'Question 2: Which planet is known as the Red Planet?', type: 'multiple_choice', required: true, options: ['Venus', 'Mars', 'Jupiter', 'Saturn'] },
+      { text: 'Question 3: What element does "O" represent on the periodic table?', type: 'multiple_choice', required: true, options: ['Gold', 'Oxygen', 'Osmium', 'Silver'] },
     ],
   },
   {
@@ -206,6 +257,35 @@ const TEMPLATES: TemplateItem[] = [
       { text: '3. Which JS keyword declares a block-scoped variable?', type: 'multiple_choice', required: true, options: ['var', 'let', 'global', 'const'] },
     ],
   },
+  {
+    id: 'python_datascience_quiz',
+    name: 'Python & Data Science Quiz',
+    category: 'Quiz & Assessments',
+    mode: 'quiz',
+    description: 'Technical quiz on Python fundamentals, NumPy, and Pandas.',
+    icon: <Code className="w-5 h-5" />,
+    color: 'from-blue-600 to-indigo-700',
+    questions: [
+      { text: 'Student / Candidate Name', type: 'short_text', required: true },
+      { text: '1. Which data structure in Python is mutable and ordered?', type: 'multiple_choice', required: true, options: ['List', 'Tuple', 'Set', 'Frozenset'] },
+      { text: '2. Which library is primarily used for multi-dimensional array operations in Python?', type: 'multiple_choice', required: true, options: ['NumPy', 'Pandas', 'Matplotlib', 'Requests'] },
+      { text: '3. What method is used to read a CSV file into a Pandas DataFrame?', type: 'multiple_choice', required: true, options: ['pd.read_csv()', 'pd.open_csv()', 'pd.load_csv()', 'pd.import_csv()'] },
+    ],
+  },
+  {
+    id: 'cybersecurity_quiz',
+    name: 'Cybersecurity Awareness Quiz',
+    category: 'Quiz & Assessments',
+    mode: 'quiz',
+    description: 'Interactive employee/student quiz on password security & phishing awareness.',
+    icon: <ClipboardCheck className="w-5 h-5" />,
+    color: 'from-rose-600 to-red-700',
+    questions: [
+      { text: 'Employee Name / ID', type: 'short_text', required: true },
+      { text: '1. What should you do if you receive an unexpected email asking for account credentials?', type: 'multiple_choice', required: true, options: ['Report to IT/Security', 'Click the link to verify', 'Reply to sender', 'Ignore'] },
+      { text: '2. What is Multi-Factor Authentication (MFA)?', type: 'multiple_choice', required: true, options: ['Using 2 or more verification factors', 'Changing passwords daily', 'Using anti-virus', 'Connecting to VPN'] },
+    ],
+  },
 ];
 
 export const TemplatesPage: React.FC = () => {
@@ -221,12 +301,19 @@ export const TemplatesPage: React.FC = () => {
     setCreating(tmpl.id);
     const form = await formService.createForm(profile.id, tmpl.name);
     if (form) {
-      await formService.updateForm(form.id, { description: tmpl.description });
+      await formService.updateForm(form.id, {
+        description: tmpl.description,
+        form_mode: tmpl.mode as any,
+        form_type: tmpl.mode === 'quiz' ? 'quiz' : 'form',
+        registration_prefix: tmpl.prefix || null,
+        closed_title: tmpl.mode === 'registration' ? 'Registration Closed' : (tmpl.mode === 'quiz' ? 'Assessment Closed' : 'Form Closed'),
+        closed_message: tmpl.mode === 'registration' ? 'Registration for this event has ended.' : 'This form is no longer accepting responses.',
+      });
       for (let i = 0; i < tmpl.questions.length; i++) {
         const qData = tmpl.questions[i];
         const q = await formService.addQuestion(form.id, qData.type, i);
         if (q) {
-          await formService.updateQuestion(q.id, { question_text: qData.text });
+          await formService.updateQuestion(q.id, { question_text: qData.text, required: qData.required ?? false });
           if (qData.options && qData.options.length > 0) {
             // clear default opts
             if (q.options) {
