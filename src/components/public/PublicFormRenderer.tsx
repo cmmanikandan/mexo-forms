@@ -124,14 +124,21 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
 
   const validatePage = (pageQuestions: FormQuestion[]) => {
     const newErrors: Record<string, string> = {};
-    pageQuestions.forEach(q => {
-      if (q.required) {
-        const ans = answers[q.id];
-        if (!ans || (Array.isArray(ans) && ans.length === 0) || (typeof ans === 'string' && !ans.trim())) {
-          newErrors[q.id] = 'This field is required.';
+    pageQuestions
+      .filter(q => q.question_type !== 'page_break' && isQuestionVisible(q))
+      .forEach(q => {
+        if (q.required) {
+          const ans = answers[q.id];
+          if (
+            ans === undefined ||
+            ans === null ||
+            (Array.isArray(ans) && ans.length === 0) ||
+            (typeof ans === 'string' && !ans.trim())
+          ) {
+            newErrors[q.id] = 'This field is required.';
+          }
         }
-      }
-    });
+      });
     setErrors(prev => ({ ...prev, ...newErrors }));
     return Object.keys(newErrors).length === 0;
   };
@@ -139,7 +146,7 @@ export const PublicFormRenderer: React.FC<PublicFormRendererProps> = ({
   const handleNextPage = () => {
     const currentQuestions = pages[currentPageIndex]?.questions || [];
     if (!validatePage(currentQuestions)) {
-      const firstErr = currentQuestions.find(q => q.required && !answers[q.id]);
+      const firstErr = currentQuestions.find(q => q.required && q.question_type !== 'page_break' && isQuestionVisible(q) && !answers[q.id]);
       if (firstErr) {
         document.getElementById(`public-q-${firstErr.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }

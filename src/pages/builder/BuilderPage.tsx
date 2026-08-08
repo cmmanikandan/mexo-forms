@@ -375,14 +375,14 @@ export const BuilderPage: React.FC = () => {
           />
         ))}
 
-        {/* Add Question Button */}
-        <div className="flex justify-center py-2">
+        {/* Add Question & Add Section Buttons */}
+        <div className="flex items-center justify-center gap-3 py-2 flex-wrap">
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
               <button
                 id="add-question-btn"
                 disabled={addingQuestion}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border-2 border-dashed border-indigo-200 text-sm font-semibold text-[#7C3AED] hover:border-indigo-400 hover:bg-indigo-50/50 transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border-2 border-dashed border-indigo-200 text-sm font-bold text-[#7C3AED] hover:border-indigo-400 hover:bg-indigo-50/50 transition-all disabled:opacity-50 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Add Question
@@ -413,6 +413,16 @@ export const BuilderPage: React.FC = () => {
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           </DropdownMenu.Root>
+
+          <button
+            id="add-page-break-btn"
+            disabled={addingQuestion}
+            onClick={() => handleAddQuestion('page_break')}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-indigo-200 bg-indigo-50/60 text-sm font-bold text-indigo-700 hover:bg-indigo-100 transition-all disabled:opacity-50 cursor-pointer"
+          >
+            <Layers className="w-4 h-4 text-[#7C3AED]" />
+            Add New Page / Section
+          </button>
         </div>
       </main>
 
