@@ -364,15 +364,40 @@ export const responseService = {
     const responses = await this.getResponses(formId, 0, 10000);
     const answers = await this.getAllAnswersForForm(formId);
 
-    const headers = ['Response ID', 'Submitted At', 'Device', ...questions.map(q => `"${q.question_text.replace(/"/g, '""')}"`)];
+    const headers = [
+      'Response ID',
+      'Submitted At',
+      'Respondent Email',
+      'Registration Code / Ticket',
+      'Score',
+      'Percentage',
+      'Device',
+      ...questions.map(q => `"${q.question_text.replace(/"/g, '""')}"`)
+    ];
+
     const rows = responses.map(r => {
       const rowAnswers = answers.filter(a => a.response_id === r.id);
       const qAnswers = questions.map(q => {
         const ans = rowAnswers.find(a => a.question_id === q.id);
-        const val = ans?.answer_text || (Array.isArray(ans?.answer_json) ? ans.answer_json.join(', ') : (ans?.answer_json ? JSON.stringify(ans.answer_json) : ''));
+        const val = ans?.answer_text || (Array.isArray(ans?.answer_json) ? ans.answer_json.join(', ') : (ans?.answer_json !== null && ans?.answer_json !== undefined ? JSON.stringify(ans.answer_json) : ''));
         return `"${(val || '').replace(/"/g, '""')}"`;
       });
-      return [r.id, r.submitted_at || (r as any).created_at || '', r.device_type || 'Desktop', ...qAnswers].join(',');
+
+      const email = r.respondent_email || 'Anonymous';
+      const ticketCode = (r as any).ticket_code || (r as any).registration_id || '—';
+      const score = r.score !== undefined && r.score !== null ? r.score : '—';
+      const percentage = (r as any).percentage !== undefined && (r as any).percentage !== null ? `${(r as any).percentage}%` : '—';
+
+      return [
+        r.id,
+        r.submitted_at || (r as any).created_at || '',
+        `"${email.replace(/"/g, '""')}"`,
+        `"${ticketCode}"`,
+        score,
+        percentage,
+        r.device_type || 'Desktop',
+        ...qAnswers
+      ].join(',');
     });
 
     return [headers.join(','), ...rows].join('\n');

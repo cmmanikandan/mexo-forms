@@ -15,8 +15,86 @@ const COLORS = ['#7C3AED', '#6366F1', '#0878e8', '#10b981', '#f59e0b', '#f43f5e'
 export const ResponseSummaryTab: React.FC<ResponseSummaryTabProps> = ({
   questions, responses, answers, analytics,
 }) => {
+  // Quiz Score Analytics computation
+  const scoredResponses = responses.filter(r => r.score !== undefined && r.score !== null);
+  const hasQuizScores = scoredResponses.length > 0;
+
+  let avgPercentage = 0;
+  let passRate = 0;
+  let maxScore = 0;
+  let minScore = 0;
+  let scoreDistData: { bracket: string; count: number }[] = [];
+
+  if (hasQuizScores) {
+    const percentages = scoredResponses.map(r => (r as any).percentage ?? Math.round(((r.score || 0) / (r.total_points || 1)) * 100));
+    avgPercentage = Math.round(percentages.reduce((a, b) => a + b, 0) / percentages.length);
+    const passed = percentages.filter(p => p >= 70).length;
+    passRate = Math.round((passed / percentages.length) * 100);
+    maxScore = Math.max(...percentages);
+    minScore = Math.min(...percentages);
+
+    const b1 = percentages.filter(p => p < 25).length;
+    const b2 = percentages.filter(p => p >= 25 && p < 50).length;
+    const b3 = percentages.filter(p => p >= 50 && p < 75).length;
+    const b4 = percentages.filter(p => p >= 75).length;
+    scoreDistData = [
+      { bracket: '0-24%', count: b1 },
+      { bracket: '25-49%', count: b2 },
+      { bracket: '50-74%', count: b3 },
+      { bracket: '75-100%', count: b4 },
+    ];
+  }
+
   return (
     <div className="space-y-5">
+      {/* Quiz Performance Analytics (Shown if quiz scores exist) */}
+      {hasQuizScores && (
+        <div className="bg-gradient-to-br from-indigo-950 via-purple-900 to-slate-900 rounded-2xl p-5 text-white shadow-mexo-md space-y-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div>
+              <h3 className="text-sm font-extrabold flex items-center gap-2 text-white">
+                <Star className="w-4 h-4 text-amber-400 fill-amber-400" /> Quiz Assessment Analytics
+              </h3>
+              <p className="text-[11px] text-purple-200 mt-0.5">Automated scoring & performance breakdown across {scoredResponses.length} quiz attempts</p>
+            </div>
+            <span className="px-3 py-1 rounded-full text-xs font-black bg-purple-500/30 text-purple-200 border border-purple-400/30">
+              Quiz Mode Active
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 border border-white/10">
+              <p className="text-[11px] font-semibold text-purple-200">Average Score</p>
+              <p className="text-2xl font-black text-amber-300 mt-1">{avgPercentage}%</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 border border-white/10">
+              <p className="text-[11px] font-semibold text-purple-200">Pass Rate (≥70%)</p>
+              <p className="text-2xl font-black text-emerald-400 mt-1">{passRate}%</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 border border-white/10">
+              <p className="text-[11px] font-semibold text-purple-200">Highest Score</p>
+              <p className="text-2xl font-black text-cyan-300 mt-1">{maxScore}%</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md rounded-xl p-3.5 border border-white/10">
+              <p className="text-[11px] font-semibold text-purple-200">Lowest Score</p>
+              <p className="text-2xl font-black text-rose-300 mt-1">{minScore}%</p>
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <p className="text-[11px] font-bold text-purple-200 mb-2">Score Distribution</p>
+            <ResponsiveContainer width="100%" height={100}>
+              <BarChart data={scoreDistData}>
+                <XAxis dataKey="bracket" tick={{ fontSize: 10, fill: '#e2e8f0' }} />
+                <YAxis tick={{ fontSize: 10, fill: '#e2e8f0' }} allowDecimals={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#1e1b4b', borderColor: '#4338ca', color: '#fff', borderRadius: '12px', fontSize: '11px' }} />
+                <Bar dataKey="count" fill="#a855f7" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       {/* Response Trend & Device Breakdown Grid */}
       {analytics && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

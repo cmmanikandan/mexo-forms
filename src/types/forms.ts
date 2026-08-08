@@ -152,6 +152,11 @@ export interface FormResponse {
   registration_reference?: string;
   started_at: string;
   submitted_at?: string;
+  score?: number;
+  total_points?: number;
+  percentage?: number;
+  ticket_code?: string;
+  registration_id?: string;
   answers?: FormAnswer[];
 }
 
