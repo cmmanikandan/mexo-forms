@@ -359,13 +359,13 @@ export const TemplatesPage: React.FC = () => {
         </div>
 
         {/* Category bar */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-6 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
           {categories.map(cat => (
             <button
               key={cat}
               id={`cat-${cat.toLowerCase()}`}
               onClick={() => setSelectedCat(cat)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                 selectedCat === cat
                   ? 'bg-[#7C3AED] text-white shadow-sm'
                   : 'bg-white text-app-body border border-app-border hover:bg-slate-50'
@@ -377,20 +377,31 @@ export const TemplatesPage: React.FC = () => {
         </div>
 
         {/* Templates grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {filtered.map(tmpl => (
             <div
               key={tmpl.id}
-              className="bg-white rounded-2xl border border-app-border hover:border-indigo-200 hover:shadow-mexo-md transition-all p-5 flex flex-col justify-between"
+              className="bg-white rounded-2xl border border-app-border hover:border-indigo-200 hover:shadow-mexo-md transition-all p-4 sm:p-5 flex flex-col justify-between"
             >
               <div>
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tmpl.color} text-white flex items-center justify-center mb-4 shadow-sm`}>
-                  {tmpl.icon}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tmpl.color} text-white flex items-center justify-center shadow-sm shrink-0`}>
+                    {tmpl.icon}
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${
+                    tmpl.mode === 'registration'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : tmpl.mode === 'quiz'
+                      ? 'bg-purple-50 text-[#7C3AED] border-purple-200'
+                      : 'bg-slate-100 text-slate-700 border-slate-200'
+                  }`}>
+                    {tmpl.mode === 'registration' ? 'Registration' : tmpl.mode === 'quiz' ? 'Quiz' : 'Form'}
+                  </span>
                 </div>
-                <h3 className="font-bold text-app-heading text-sm">{tmpl.name}</h3>
+                <h3 className="font-bold text-app-heading text-sm sm:text-base leading-snug">{tmpl.name}</h3>
                 <p className="text-xs text-app-muted mt-1 leading-relaxed">{tmpl.description}</p>
                 <div className="mt-3 text-[11px] text-app-body bg-slate-50 rounded-xl p-2.5 border border-slate-100">
-                  <span className="font-semibold text-app-heading">{tmpl.questions.length} Questions:</span>
+                  <span className="font-bold text-app-heading">{tmpl.questions.length} Questions Included:</span>
                   <ul className="list-disc list-inside mt-1 space-y-0.5 text-app-muted">
                     {tmpl.questions.slice(0, 2).map((q, i) => (
                       <li key={i} className="truncate">{q.text}</li>
@@ -399,7 +410,7 @@ export const TemplatesPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-5 pt-3 border-t border-app-border">
+              <div className="mt-4 pt-3 border-t border-app-border">
                 <MexoButton
                   id={`use-template-${tmpl.id}`}
                   variant="primary"

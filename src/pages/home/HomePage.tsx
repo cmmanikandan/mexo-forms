@@ -99,8 +99,17 @@ export const HomePage: React.FC = () => {
 
         {/* Quick start templates */}
         <div className="mb-10">
-          <h2 className="text-sm font-bold text-app-heading mb-3">Start with a template</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-app-heading">Start with a template</h2>
+            <button
+              id="home-view-all-templates"
+              onClick={() => navigate('/templates')}
+              className="text-xs font-bold text-[#7C3AED] hover:text-[#6D28D9] transition-colors cursor-pointer"
+            >
+              Browse all templates →
+            </button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
             {QUICK_TEMPLATES.map(tmpl => (
               <button
                 key={tmpl.id}
@@ -114,6 +123,18 @@ export const HomePage: React.FC = () => {
                 <span className="text-xs font-semibold text-app-heading">{tmpl.label}</span>
               </button>
             ))}
+
+            {/* View All Card */}
+            <button
+              id="quick-template-view-all"
+              onClick={() => navigate('/templates')}
+              className="group flex flex-col items-center gap-2.5 p-4 bg-purple-50/60 rounded-2xl border border-purple-200/80 hover:border-[#7C3AED] hover:bg-purple-100/50 hover:shadow-mexo-md transition-all text-center cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#7C3AED] text-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                <Layout className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-bold text-[#7C3AED]">View All →</span>
+            </button>
           </div>
         </div>
 

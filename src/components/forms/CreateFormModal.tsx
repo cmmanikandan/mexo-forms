@@ -5,7 +5,7 @@ import { formService } from '../../services/formService';
 import { Form } from '../../types/forms';
 import { MexoModal } from '../common/MexoModal';
 import { MexoButton } from '../common/MexoButton';
-import { FileText, MessageSquare, Users, Zap, ClipboardCheck, User, HelpCircle } from 'lucide-react';
+import { FileText, MessageSquare, Users, Zap, ClipboardCheck, User, HelpCircle, Code, Star, GraduationCap } from 'lucide-react';
 
 interface CreateFormModalProps {
   open: boolean;
@@ -109,6 +109,80 @@ const TEMPLATES: TemplateDef[] = [
     mode: 'standard',
     questions: [
       { text: 'What feature should we build next?', type: 'multiple_choice', required: true, options: ['Dark Mode', 'Mobile App', 'Offline Sync', 'Custom Themes'] },
+    ],
+  },
+  {
+    id: 'hackathon_registration',
+    label: 'Hackathon Registration',
+    description: 'Team hackathon signup',
+    icon: <Code className="w-5 h-5" />,
+    color: 'bg-amber-50 text-amber-700',
+    mode: 'registration',
+    prefix: 'MXHK',
+    questions: [
+      { text: 'Team Name', type: 'short_text', required: true },
+      { text: 'Team Leader Name', type: 'short_text', required: true },
+      { text: 'Team Leader Email', type: 'email', required: true },
+      { text: 'Team Leader Mobile', type: 'phone', required: true },
+      { text: 'Team Size (2 - 4)', type: 'number', required: true },
+      { text: 'Problem Track / Domain', type: 'dropdown', options: ['AI & ML', 'Web & App Development', 'Blockchain & Fintech', 'Open Innovation'] },
+    ],
+  },
+  {
+    id: 'cultural_fest',
+    label: 'Cultural Fest Signup',
+    description: 'Music, dance & arts signup',
+    icon: <Star className="w-5 h-5" />,
+    color: 'bg-purple-50 text-purple-700',
+    mode: 'registration',
+    prefix: 'MXCL',
+    questions: [
+      { text: 'Participant / Group Name', type: 'short_text', required: true },
+      { text: 'Contact Email', type: 'email', required: true },
+      { text: 'Phone Number', type: 'phone', required: true },
+      { text: 'Competition Event', type: 'dropdown', options: ['Solo Singing', 'Group Dance', 'Battle of Bands', 'Drama / Skit', 'Photography'] },
+    ],
+  },
+  {
+    id: 'sports_tournament',
+    label: 'Sports Tournament',
+    description: 'Intra-college sports signup',
+    icon: <Users className="w-5 h-5" />,
+    color: 'bg-teal-50 text-teal-700',
+    mode: 'registration',
+    prefix: 'MXSP',
+    questions: [
+      { text: 'Player / Captain Name', type: 'short_text', required: true },
+      { text: 'Email Address', type: 'email', required: true },
+      { text: 'Phone Number', type: 'phone', required: true },
+      { text: 'Sport Discipline', type: 'dropdown', options: ['Cricket (T10)', 'Football (5v5)', 'Badminton (Singles)', 'Basketball', 'Table Tennis'] },
+    ],
+  },
+  {
+    id: 'course_evaluation',
+    label: 'Course Evaluation',
+    description: 'Student course feedback',
+    icon: <GraduationCap className="w-5 h-5" />,
+    color: 'bg-cyan-50 text-cyan-700',
+    mode: 'standard',
+    questions: [
+      { text: 'Course Name / Code', type: 'short_text', required: true },
+      { text: 'Overall Rating of the Course', type: 'rating', required: true },
+      { text: 'Instructor Clarity & Delivery', type: 'rating', required: true },
+      { text: 'Were course materials helpful?', type: 'yes_no', required: true },
+    ],
+  },
+  {
+    id: 'python_datascience_quiz',
+    label: 'Python Quiz',
+    description: 'Python & Data Science test',
+    icon: <Code className="w-5 h-5" />,
+    color: 'bg-blue-50 text-blue-700',
+    mode: 'quiz',
+    questions: [
+      { text: 'Student / Candidate Name', type: 'short_text', required: true },
+      { text: '1. Which data structure in Python is mutable and ordered?', type: 'multiple_choice', required: true, options: ['List', 'Tuple', 'Set', 'Frozenset'] },
+      { text: '2. Which library is used for multi-dimensional array operations?', type: 'multiple_choice', required: true, options: ['NumPy', 'Pandas', 'Matplotlib', 'Requests'] },
     ],
   },
 ];
