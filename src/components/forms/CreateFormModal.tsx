@@ -11,35 +11,165 @@ interface CreateFormModalProps {
   open: boolean;
   onClose: () => void;
   onCreated: (form: Form) => void;
+  initialTemplateId?: string;
 }
 
-const TEMPLATES = [
+interface TemplateDef {
+  id: string;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  color: string;
+  mode?: 'standard' | 'registration' | 'quiz';
+  prefix?: string;
+  questions?: { text: string; type: string; required?: boolean; options?: string[] }[];
+}
+
+const TEMPLATES: TemplateDef[] = [
   { id: 'blank', label: 'Blank Form', description: 'Start from scratch', icon: <FileText className="w-5 h-5" />, color: 'bg-slate-100 text-slate-600' },
-  { id: 'feedback', label: 'Feedback', description: 'Collect feedback from users', icon: <MessageSquare className="w-5 h-5" />, color: 'bg-blue-50 text-blue-600' },
-  { id: 'registration', label: 'Registration', description: 'Event or course signup', icon: <Users className="w-5 h-5" />, color: 'bg-emerald-50 text-emerald-600' },
-  { id: 'quiz', label: 'Quiz', description: 'Test knowledge with scoring', icon: <Zap className="w-5 h-5" />, color: 'bg-amber-50 text-amber-600' },
-  { id: 'survey', label: 'Survey', description: 'Gather opinions and data', icon: <ClipboardCheck className="w-5 h-5" />, color: 'bg-violet-50 text-violet-600' },
-  { id: 'contact', label: 'Contact Form', description: 'Basic contact information', icon: <User className="w-5 h-5" />, color: 'bg-indigo-50 text-indigo-600' },
-  { id: 'poll', label: 'Poll', description: 'Quick single-question vote', icon: <HelpCircle className="w-5 h-5" />, color: 'bg-pink-50 text-pink-600' },
+  {
+    id: 'feedback',
+    label: 'Feedback',
+    description: 'Collect feedback from users',
+    icon: <MessageSquare className="w-5 h-5" />,
+    color: 'bg-blue-50 text-blue-600',
+    mode: 'standard',
+    questions: [
+      { text: 'How satisfied are you with our service?', type: 'rating', required: true },
+      { text: 'How likely are you to recommend us to a friend?', type: 'linear_scale', required: true },
+      { text: 'What features do you appreciate most?', type: 'short_text', required: false },
+      { text: 'What can we improve?', type: 'long_text', required: false },
+    ],
+  },
+  {
+    id: 'registration',
+    label: 'Registration',
+    description: 'Event or course signup',
+    icon: <Users className="w-5 h-5" />,
+    color: 'bg-emerald-50 text-emerald-600',
+    mode: 'registration',
+    prefix: 'MXEV',
+    questions: [
+      { text: 'Full Name', type: 'short_text', required: true },
+      { text: 'Email Address', type: 'email', required: true },
+      { text: 'Mobile Number', type: 'phone', required: true },
+      { text: 'Organization / Institution', type: 'short_text' },
+      { text: 'Participant Category', type: 'dropdown', options: ['Student', 'Faculty', 'Professional', 'Guest'] },
+      { text: 'Special Notes / Requirements', type: 'long_text' },
+    ],
+  },
+  {
+    id: 'quiz',
+    label: 'Quiz',
+    description: 'Test knowledge with scoring',
+    icon: <Zap className="w-5 h-5" />,
+    color: 'bg-amber-50 text-amber-600',
+    mode: 'quiz',
+    questions: [
+      { text: 'Student Name / Email', type: 'short_text', required: true },
+      { text: 'Question 1: What is the capital of France?', type: 'multiple_choice', required: true, options: ['London', 'Berlin', 'Paris', 'Madrid'] },
+      { text: 'Question 2: Which planet is known as the Red Planet?', type: 'multiple_choice', required: true, options: ['Venus', 'Mars', 'Jupiter', 'Saturn'] },
+      { text: 'Question 3: What element does "O" represent on the periodic table?', type: 'multiple_choice', required: true, options: ['Gold', 'Oxygen', 'Osmium', 'Silver'] },
+    ],
+  },
+  {
+    id: 'survey',
+    label: 'Survey',
+    description: 'Gather opinions and data',
+    icon: <ClipboardCheck className="w-5 h-5" />,
+    color: 'bg-violet-50 text-violet-600',
+    mode: 'standard',
+    questions: [
+      { text: 'Respondent Name / Department', type: 'short_text' },
+      { text: 'Primary Topic of Interest', type: 'multiple_choice', options: ['Technology', 'Business', 'Design', 'Science'] },
+      { text: 'Frequency of Use', type: 'dropdown', options: ['Daily', 'Weekly', 'Monthly', 'First Time'] },
+      { text: 'Additional Comments & Feedback', type: 'long_text' },
+    ],
+  },
+  {
+    id: 'contact',
+    label: 'Contact Form',
+    description: 'Basic contact information',
+    icon: <User className="w-5 h-5" />,
+    color: 'bg-indigo-50 text-indigo-600',
+    mode: 'standard',
+    questions: [
+      { text: 'Full Name', type: 'short_text', required: true },
+      { text: 'Email Address', type: 'email', required: true },
+      { text: 'Subject', type: 'short_text', required: true },
+      { text: 'Your Message', type: 'long_text', required: true },
+    ],
+  },
+  {
+    id: 'poll',
+    label: 'Poll',
+    description: 'Quick single-question vote',
+    icon: <HelpCircle className="w-5 h-5" />,
+    color: 'bg-pink-50 text-pink-600',
+    mode: 'standard',
+    questions: [
+      { text: 'What feature should we build next?', type: 'multiple_choice', required: true, options: ['Dark Mode', 'Mobile App', 'Offline Sync', 'Custom Themes'] },
+    ],
+  },
 ];
 
-export const CreateFormModal: React.FC<CreateFormModalProps> = ({ open, onClose, onCreated }) => {
+export const CreateFormModal: React.FC<CreateFormModalProps> = ({ open, onClose, onCreated, initialTemplateId }) => {
   const { profile } = useAuth();
-  const [selected, setSelected] = useState('blank');
+  const [selected, setSelected] = React.useState(initialTemplateId || 'blank');
   const [title, setTitle] = useState('');
   const [creating, setCreating] = useState(false);
+
+  React.useEffect(() => {
+    if (initialTemplateId) setSelected(initialTemplateId);
+  }, [initialTemplateId]);
 
   const handleCreate = async () => {
     if (!profile) return;
     setCreating(true);
-    const templateLabel = TEMPLATES.find(t => t.id === selected)?.label || 'Form';
+
+    const tmpl = TEMPLATES.find(t => t.id === selected);
+    const templateLabel = tmpl?.label || 'Form';
     const formTitle = title.trim() || (selected === 'blank' ? 'Untitled Form' : templateLabel);
+
     const form = await formService.createForm(profile.id, formTitle);
-    setCreating(false);
     if (form) {
+      if (tmpl && tmpl.id !== 'blank') {
+        await formService.updateForm(form.id, {
+          description: tmpl.description,
+          form_mode: tmpl.mode as any,
+          form_type: tmpl.mode === 'quiz' ? 'quiz' : 'form',
+          registration_prefix: tmpl.prefix || null,
+          closed_title: tmpl.mode === 'registration' ? 'Registration Closed' : (tmpl.mode === 'quiz' ? 'Assessment Closed' : 'Form Closed'),
+          closed_message: tmpl.mode === 'registration' ? 'Registration for this event has ended.' : 'This form is no longer accepting responses.',
+        });
+
+        if (tmpl.questions && tmpl.questions.length > 0) {
+          for (let i = 0; i < tmpl.questions.length; i++) {
+            const qData = tmpl.questions[i];
+            const q = await formService.addQuestion(form.id, qData.type, i);
+            if (q) {
+              await formService.updateQuestion(q.id, { question_text: qData.text, required: qData.required ?? false });
+              if (qData.options && qData.options.length > 0) {
+                if (q.options) {
+                  for (const opt of q.options) {
+                    await formService.deleteOption(opt.id);
+                  }
+                }
+                for (let j = 0; j < qData.options.length; j++) {
+                  await formService.addOption(q.id, qData.options[j], j);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      setCreating(false);
       setTitle('');
       setSelected('blank');
       onCreated(form);
+    } else {
+      setCreating(false);
     }
   };
 

@@ -32,6 +32,7 @@ export const HomePage: React.FC = () => {
   const [forms, setForms] = useState<Form[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('blank');
 
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -49,6 +50,11 @@ export const HomePage: React.FC = () => {
   const handleFormCreated = (form: Form) => {
     setCreateOpen(false);
     navigate(`/forms/${form.id}/edit`);
+  };
+
+  const handleOpenCreate = (templateId: string = 'blank') => {
+    setSelectedTemplateId(templateId);
+    setCreateOpen(true);
   };
 
   const handleFormDeleted = (formId: string) => {
@@ -99,10 +105,7 @@ export const HomePage: React.FC = () => {
               <button
                 key={tmpl.id}
                 id={`quick-template-${tmpl.id}`}
-                onClick={() => {
-                  if (tmpl.id === 'blank') setCreateOpen(true);
-                  else navigate(`/templates?t=${tmpl.id}`);
-                }}
+                onClick={() => handleOpenCreate(tmpl.id)}
                 className="group flex flex-col items-center gap-2.5 p-4 bg-white rounded-2xl border border-app-border hover:border-indigo-200 hover:shadow-mexo-md transition-all text-center cursor-pointer"
               >
                 <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${tmpl.color} text-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform`}>
@@ -166,7 +169,12 @@ export const HomePage: React.FC = () => {
         </div>
       </div>
 
-      <CreateFormModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={handleFormCreated} />
+      <CreateFormModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={handleFormCreated}
+        initialTemplateId={selectedTemplateId}
+      />
       <MexoToastContainer toasts={toasts} removeToast={removeToast} />
     </AppShell>
   );

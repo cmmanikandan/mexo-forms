@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { AppShell } from '../../components/layout/AppShell';
 import { MexoButton } from '../../components/common/MexoButton';
@@ -290,11 +290,23 @@ const TEMPLATES: TemplateItem[] = [
 
 export const TemplatesPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { profile } = useAuth();
   const [creating, setCreating] = useState<string | null>(null);
   const [selectedCat, setSelectedCat] = useState<string>('All');
 
   const categories = ['All', 'Standard Forms', 'Registration & Events', 'Quiz & Assessments'];
+
+  const templateParam = searchParams.get('t');
+
+  React.useEffect(() => {
+    if (templateParam) {
+      const match = TEMPLATES.find(t => t.id === templateParam || t.id.includes(templateParam));
+      if (match) {
+        setSelectedCat(match.category);
+      }
+    }
+  }, [templateParam]);
 
   const handleUseTemplate = async (tmpl: TemplateItem) => {
     if (!profile) return;
